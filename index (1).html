@@ -1,0 +1,617 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>ProjectSync — Student Project Manager</title>
+  <meta name="description" content="The simplest way for students to organize group projects. No more WhatsApp chaos.">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>📋</text></svg>">
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: { sans: ['Inter', 'sans-serif'] },
+          colors: {
+            primary: { 50: '#eff6ff', 100: '#dbeafe', 200: '#bfdbfe', 300: '#93c5fd', 400: '#60a5fa', 500: '#3b82f6', 600: '#2563eb', 700: '#1d4ed8', 800: '#1e40af', 900: '#1e3a8a' },
+            accent: { 50: '#fef2f2', 100: '#fee2e2', 400: '#f87171', 500: '#ef4444', 600: '#dc2626' },
+            success: { 50: '#f0fdf4', 400: '#4ade80', 500: '#22c55e', 600: '#16a34a' },
+            warning: { 50: '#fffbeb', 400: '#fbbf24', 500: '#f59e0b', 600: '#d97706' }
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    * { -webkit-tap-highlight-color: transparent; }
+    body { font-family: 'Inter', sans-serif; overscroll-behavior-y: none; }
+    .glass { background: rgba(255,255,255,0.85); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); }
+    .card-shadow { box-shadow: 0 1px 3px rgba(0,0,0,0.08), 0 4px 12px rgba(0,0,0,0.05); }
+    .btn-press:active { transform: scale(0.96); }
+    .slide-up { animation: slideUp 0.3s ease-out; }
+    @keyframes slideUp { from { transform: translateY(100%); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+    .fade-in { animation: fadeIn 0.25s ease-out; }
+    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+    .progress-ring { transform: rotate(-90deg); }
+    .hide-scrollbar::-webkit-scrollbar { display: none; }
+    .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    .task-card { transition: all 0.2s ease; }
+    .task-card:hover { transform: translateY(-1px); }
+    .modal-overlay { background: rgba(0,0,0,0.5); backdrop-filter: blur(4px); }
+    .priority-high { border-left: 4px solid #ef4444; }
+    .priority-medium { border-left: 4px solid #f59e0b; }
+    .priority-low { border-left: 4px solid #22c55e; }
+    .status-todo { background: #f1f5f9; color: #64748b; }
+    .status-progress { background: #dbeafe; color: #2563eb; }
+    .status-done { background: #dcfce7; color: #16a34a; }
+    .telegram-btn { background: linear-gradient(135deg, #0088cc, #005f8f); }
+    input:focus, textarea:focus, select:focus { outline: none; }
+    .lang-btn.active { background: #2563eb; color: white; }
+    .edu-level-badge { font-size: 10px; padding: 2px 8px; border-radius: 6px; font-weight: 600; }
+    .edu-middle { background: #dbeafe; color: #1d4ed8; }
+    .edu-high { background: #dcfce7; color: #166534; }
+    .edu-uni { background: #fef3c7; color: #92400e; }
+    .edu-self { background: #f3e8ff; color: #6b21a8; }
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-800 min-h-screen">
+
+  <!-- ================= AUTH SCREEN ================= -->
+  <div id="authScreen" class="fixed inset-0 z-50 bg-gradient-to-br from-primary-600 via-primary-700 to-primary-900 flex flex-col items-center justify-center p-6">
+    <div class="text-center max-w-sm w-full">
+      <!-- Language Switcher -->
+      <div class="flex justify-center gap-2 mb-6">
+        <button onclick="app.setLanguage('en')" class="lang-btn px-3 py-1 rounded-lg text-xs font-medium bg-white/20 text-white/80 transition-all" data-lang="en">EN</button>
+        <button onclick="app.setLanguage('ms')" class="lang-btn px-3 py-1 rounded-lg text-xs font-medium bg-white/20 text-white/80 transition-all" data-lang="ms">MS</button>
+        <button onclick="app.setLanguage('zh')" class="lang-btn px-3 py-1 rounded-lg text-xs font-medium bg-white/20 text-white/80 transition-all" data-lang="zh">中文</button>
+        <button onclick="app.setLanguage('es')" class="lang-btn px-3 py-1 rounded-lg text-xs font-medium bg-white/20 text-white/80 transition-all" data-lang="es">ES</button>
+      </div>
+
+      <div class="w-20 h-20 bg-white/20 rounded-2xl flex items-center justify-center mx-auto mb-6 backdrop-blur-sm">
+        <i class="fas fa-layer-group text-3xl text-white"></i>
+      </div>
+      <h1 class="text-3xl font-bold text-white mb-2">ProjectSync</h1>
+      <p class="text-primary-100 text-sm mb-2" data-i18n="auth.tagline">The simplest way to organize group projects.</p>
+      <p class="text-primary-200/70 text-xs mb-8" data-i18n="auth.subtagline">No more WhatsApp chaos. Built by students, for students worldwide.</p>
+
+      <!-- Education Level Selector -->
+      <div class="mb-6">
+        <p class="text-white/60 text-xs mb-2 uppercase tracking-wider font-medium" data-i18n="auth.eduLevel">I am a</p>
+        <div class="grid grid-cols-2 gap-2">
+          <button onclick="app.setEduLevel('middle')" class="edu-level-btn py-2.5 rounded-xl bg-white/10 text-white/80 text-xs font-medium border border-white/10 btn-press transition-all" data-edu="middle">
+            <i class="fas fa-child mr-1"></i> <span data-i18n="edu.middle">Middle School</span>
+          </button>
+          <button onclick="app.setEduLevel('high')" class="edu-level-btn py-2.5 rounded-xl bg-white/10 text-white/80 text-xs font-medium border border-white/10 btn-press transition-all active" data-edu="high">
+            <i class="fas fa-graduation-cap mr-1"></i> <span data-i18n="edu.high">High School</span>
+          </button>
+          <button onclick="app.setEduLevel('uni')" class="edu-level-btn py-2.5 rounded-xl bg-white/10 text-white/80 text-xs font-medium border border-white/10 btn-press transition-all" data-edu="uni">
+            <i class="fas fa-university mr-1"></i> <span data-i18n="edu.uni">University</span>
+          </button>
+          <button onclick="app.setEduLevel('self')" class="edu-level-btn py-2.5 rounded-xl bg-white/10 text-white/80 text-xs font-medium border border-white/10 btn-press transition-all" data-edu="self">
+            <i class="fas fa-laptop-code mr-1"></i> <span data-i18n="edu.self">Self-Learner</span>
+          </button>
+        </div>
+      </div>
+
+      <div class="space-y-3">
+        <button onclick="app.signInWithGoogle()" class="w-full bg-white text-slate-800 font-semibold py-3.5 px-6 rounded-xl flex items-center justify-center gap-3 btn-press card-shadow">
+          <img src="https://www.google.com/favicon.ico" class="w-5 h-5" alt="G">
+          <span data-i18n="auth.google">Continue with Google</span>
+        </button>
+        <button onclick="app.showEmailAuth()" class="w-full bg-white/10 text-white font-medium py-3.5 px-6 rounded-xl flex items-center justify-center gap-3 btn-press border border-white/20">
+          <i class="fas fa-envelope text-sm"></i>
+          <span data-i18n="auth.email">Sign in with Email</span>
+        </button>
+      </div>
+
+      <p class="text-primary-200/50 text-[10px] mt-6">ProjectSync Global v1.0</p>
+    </div>
+  </div>
+
+  <!-- ================= EMAIL AUTH MODAL ================= -->
+  <div id="emailAuthModal" class="fixed inset-0 z-[60] hidden">
+    <div class="modal-overlay absolute inset-0" onclick="app.hideEmailAuth()"></div>
+    <div class="absolute bottom-0 left-0 right-0 bg-white rounded-t-3xl p-6 slide-up max-h-[85vh] overflow-y-auto">
+      <div class="w-12 h-1.5 bg-slate-200 rounded-full mx-auto mb-6"></div>
+      <h2 class="text-xl font-bold text-slate-800 mb-1" id="emailAuthTitle">Sign In</h2>
+      <p class="text-slate-400 text-sm mb-6" data-i18n="auth.emailSubtitle">Enter your email to continue</p>
+
+      <div class="space-y-4">
+        <div>
+          <label class="text-xs font-medium text-slate-500 uppercase tracking-wider" data-i18n="label.email">Email</label>
+          <input type="email" id="authEmail" placeholder="you@school.edu" class="w-full mt-1.5 bg-slate-50 border border-slate-200 rounded-xl px-4 py-3.5 text-sm focus:border-primary-500 focus:ring-2 focus:ring-primary-100 transition-all">
+        </div>
+        <div>
+          <label class="text-xs font-medium text-slate-500 uppercase tracking-wider" data-i18n="label.password">Password</label>
+          <input type="password" id="authPassword" placeholder="Min 6 characters" class="w-full mt-1.5 bg-slate-50 border border-slate-200 rounded-xl px-4 py-3.5 text-sm focus:border-primary-500 focus:ring-2 focus:ring-primary-100 transition-all">
+        </div>
+        <button onclick="app.handleEmailAuth()" class="w-full bg-primary-600 text-white font-semibold py-3.5 rounded-xl btn-press">
+          <span id="emailAuthBtnText">Sign In</span>
+        </button>
+      </div>
+
+      <p class="text-center text-sm text-slate-400 mt-4">
+        <span id="emailAuthToggleText">Don't have an account?</span>
+        <button onclick="app.toggleEmailAuthMode()" class="text-primary-600 font-medium ml-1" id="emailAuthToggleBtn">Sign Up</button>
+      </p>
+    </div>
+  </div>
+
+  <!-- ================= MAIN APP ================= -->
+  <div id="mainApp" class="hidden">
+
+    <!-- Header -->
+    <header class="glass sticky top-0 z-40 border-b border-slate-100">
+      <div class="max-w-lg mx-auto px-4 py-3 flex items-center justify-between">
+        <div class="flex items-center gap-3">
+          <div class="w-9 h-9 bg-primary-600 rounded-xl flex items-center justify-center">
+            <i class="fas fa-layer-group text-white text-sm"></i>
+          </div>
+          <div>
+            <h1 class="font-bold text-slate-800 text-sm leading-tight">ProjectSync</h1>
+            <p class="text-[10px] text-slate-400" id="headerGreeting">Hey there!</p>
+          </div>
+        </div>
+        <div class="flex items-center gap-2">
+          <!-- Language quick switch -->
+          <button onclick="app.showLanguagePicker()" class="w-9 h-9 rounded-xl bg-slate-50 flex items-center justify-center btn-press text-xs font-bold text-slate-500" id="langIndicator">EN</button>
+
+          <button onclick="app.showNotifications()" class="relative w-9 h-9 rounded-xl bg-slate-50 flex items-center justify-center btn-press">
+            <i class="fas fa-bell text-slate-500 text-sm"></i>
+            <span id="notifBadge" class="absolute -top-0.5 -right-0.5 w-4 h-4 bg-accent-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center hidden">3</span>
+          </button>
+          <button onclick="app.showProfile()" class="w-9 h-9 rounded-xl overflow-hidden btn-press">
+            <img id="headerAvatar" src="" class="w-full h-full object-cover" alt="">
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <!-- Content Area -->
+    <main class="max-w-lg mx-auto px-4 pb-24 pt-4" id="mainContent">
+      <!-- DASHBOARD VIEW -->
+      <div id="dashboardView" class="fade-in">
+        <!-- Welcome Banner (first-time) -->
+        <div id="welcomeBanner" class="hidden mb-5 bg-gradient-to-r from-primary-600 to-primary-700 rounded-2xl p-5 text-white relative overflow-hidden">
+          <div class="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full -translate-y-8 translate-x-8"></div>
+          <div class="relative z-10">
+            <h3 class="font-bold text-lg mb-1" data-i18n="welcome.title">Welcome to ProjectSync!</h3>
+            <p class="text-primary-100 text-sm mb-3" data-i18n="welcome.subtitle">Create your first project and invite your teammates.</p>
+            <button onclick="app.showNewProject()" class="bg-white text-primary-700 font-semibold text-sm px-4 py-2 rounded-lg btn-press" data-i18n="welcome.cta">Create First Project</button>
+          </div>
+        </div>
+
+        <!-- Stats Row -->
+        <div class="grid grid-cols-3 gap-3 mb-5">
+          <div class="bg-white rounded-2xl p-3 card-shadow">
+            <div class="text-2xl font-bold text-slate-800" id="statTotal">0</div>
+            <div class="text-[10px] text-slate-400 font-medium" data-i18n="stats.projects">Projects</div>
+          </div>
+          <div class="bg-white rounded-2xl p-3 card-shadow">
+            <div class="text-2xl font-bold text-warning-500" id="statPending">0</div>
+            <div class="text-[10px] text-slate-400 font-medium" data-i18n="stats.pending">Pending</div>
+          </div>
+          <div class="bg-white rounded-2xl p-3 card-shadow">
+            <div class="text-2xl font-bold text-success-500" id="statDone">0</div>
+            <div class="text-[10px] text-slate-400 font-medium" data-i18n="stats.done">Done</div>
+          </div>
+        </div>
+
+        <!-- Telegram Promo (if not linked) -->
+        <div id="telegramBanner" class="hidden mb-5 telegram-btn rounded-2xl p-4 text-white relative overflow-hidden">
+          <div class="absolute top-0 right-0 w-24 h-24 bg-white/10 rounded-full -translate-y-8 translate-x-8"></div>
+          <div class="relative z-10 flex items-center gap-3">
+            <div class="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center flex-shrink-0">
+              <i class="fab fa-telegram text-xl"></i>
+            </div>
+            <div class="flex-1 min-w-0">
+              <h3 class="font-semibold text-sm" data-i18n="telegram.bannerTitle">Get Telegram Reminders</h3>
+              <p class="text-white/70 text-xs" data-i18n="telegram.bannerSubtitle">Never miss a deadline again</p>
+            </div>
+            <button onclick="app.showTelegramLink()" class="bg-white text-[#0088cc] font-semibold text-xs px-4 py-2 rounded-lg btn-press flex-shrink-0" data-i18n="telegram.linkBtn">Link</button>
+          </div>
+        </div>
+
+        <!-- Upcoming Deadlines -->
+        <div class="mb-5">
+          <div class="flex items-center justify-between mb-3">
+            <h2 class="font-bold text-slate-800 text-sm" data-i18n="section.deadlines">⏰ Upcoming Deadlines</h2>
+            <button onclick="app.showAllDeadlines()" class="text-primary-600 text-xs font-medium" data-i18n="action.seeAll">See all</button>
+          </div>
+          <div id="deadlinesList" class="space-y-2"></div>
+        </div>
+
+        <!-- My Projects -->
+        <div>
+          <div class="flex items-center justify-between mb-3">
+            <h2 class="font-bold text-slate-800 text-sm" data-i18n="section.projects">📋 My Projects</h2>
+            <button onclick="app.showNewProject()" class="w-7 h-7 bg-primary-600 rounded-lg flex items-center justify-center btn-press">
+              <i class="fas fa-plus text-white text-xs"></i>
+            </button>
+          </div>
+          <div id="projectsList" class="space-y-3"></div>
+        </div>
+      </div>
+
+      <!-- PROJECT DETAIL VIEW -->
+      <div id="projectDetailView" class="hidden fade-in">
+        <button onclick="app.showDashboard()" class="flex items-center gap-2 text-slate-400 text-sm mb-4 btn-press">
+          <i class="fas fa-chevron-left text-xs"></i> <span data-i18n="action.back">Back</span>
+        </button>
+
+        <div class="bg-white rounded-2xl p-5 card-shadow mb-4" id="projectHeader"></div>
+
+        <!-- Task Board -->
+        <div class="mb-4">
+          <div class="flex items-center justify-between mb-3">
+            <h2 class="font-bold text-slate-800 text-sm" data-i18n="section.tasks">Tasks</h2>
+            <button onclick="app.showNewTask()" class="text-primary-600 text-xs font-medium flex items-center gap-1 btn-press">
+              <i class="fas fa-plus text-[10px]"></i> <span data-i18n="action.addTask">Add Task</span>
+            </button>
+          </div>
+
+          <!-- Status Tabs -->
+          <div class="flex gap-1.5 mb-3 bg-slate-100 p-1 rounded-xl">
+            <button onclick="app.setTaskFilter('all')" id="filterAll" class="flex-1 py-2 text-xs font-medium rounded-lg bg-white text-slate-800 card-shadow transition-all" data-i18n="filter.all">All</button>
+            <button onclick="app.setTaskFilter('todo')" id="filterTodo" class="flex-1 py-2 text-xs font-medium rounded-lg text-slate-400 transition-all" data-i18n="filter.todo">To Do</button>
+            <button onclick="app.setTaskFilter('in_progress')" id="filterProgress" class="flex-1 py-2 text-xs font-medium rounded-lg text-slate-400 transition-all" data-i18n="filter.doing">Doing</button>
+            <button onclick="app.setTaskFilter('done')" id="filterDone" class="flex-1 py-2 text-xs font-medium rounded-lg text-slate-400 transition-all" data-i18n="filter.done">Done</button>
+          </div>
+
+          <div id="tasksList" class="space-y-2"></div>
+        </div>
+
+        <!-- Files -->
+        <div class="mb-4">
+          <div class="flex items-center justify-between mb-3">
+            <h2 class="font-bold text-slate-800 text-sm" data-i18n="section.files">📎 Files</h2>
+            <label class="text-primary-600 text-xs font-medium flex items-center gap-1 btn-press cursor-pointer">
+              <i class="fas fa-cloud-upload-alt text-[10px]"></i> <span data-i18n="action.upload">Upload</span>
+              <input type="file" id="fileUpload" class="hidden" onchange="app.handleFileUpload(this)">
+            </label>
+          </div>
+          <div id="filesList" class="space-y-2"></div>
+        </div>
+
+        <!-- Members -->
+        <div>
+          <div class="flex items-center justify-between mb-3">
+            <h2 class="font-bold text-slate-800 text-sm" data-i18n="section.members">👥 Members</h2>
+            <button onclick="app.showInviteMember()" class="text-primary-600 text-xs font-medium flex items-center gap-1 btn-press">
+              <i class="fas fa-user-plus text-[10px]"></i> <span data-i18n="action.invite">Invite</span>
+            </button>
+          </div>
+          <div id="membersList" class="flex flex-wrap gap-2"></div>
+        </div>
+      </div>
+    </main>
+
+    <!-- Bottom Nav -->
+    <nav class="fixed bottom-0 left-0 right-0 glass border-t border-slate-100 z-40">
+      <div class="max-w-lg mx-auto flex items-center justify-around py-2 px-6">
+        <button onclick="app.showDashboard()" class="flex flex-col items-center gap-0.5 py-1 px-4 btn-press" id="navHome">
+          <i class="fas fa-home text-lg text-primary-600" id="navHomeIcon"></i>
+          <span class="text-[9px] font-medium text-primary-600" id="navHomeText" data-i18n="nav.home">Home</span>
+        </button>
+        <button onclick="app.showNewProject()" class="w-12 h-12 bg-primary-600 rounded-full flex items-center justify-center -mt-6 card-shadow btn-press">
+          <i class="fas fa-plus text-white text-lg"></i>
+        </button>
+        <button onclick="app.showSettings()" class="flex flex-col items-center gap-0.5 py-1 px-4 btn-press" id="navSettings">
+          <i class="fas fa-cog text-lg text-slate-400" id="navSettingsIcon"></i>
+          <span class="text-[9px] font-medium text-slate-400" id="navSettingsText" data-i18n="nav.settings">Settings</span>
+        </button>
+      </div>
+    </nav>
+  </div>
+
+  <!-- ================= NEW PROJECT MODAL ================= -->
+  <div id="newProjectModal" class="fixed inset-0 z-[60] hidden">
+    <div class="modal-overlay absolute inset-0" onclick="app.hideNewProject()"></div>
+    <div class="absolute bottom-0 left-0 right-0 bg-white rounded-t-3xl p-6 slide-up">
+      <div class="w-12 h-1.5 bg-slate-200 rounded-full mx-auto mb-6"></div>
+      <h2 class="text-xl font-bold text-slate-800 mb-6" data-i18n="modal.newProject">New Project</h2>
+
+      <div class="space-y-4">
+        <div>
+          <label class="text-xs font-medium text-slate-500 uppercase tracking-wider" data-i18n="label.projectName">Project Name</label>
+          <input type="text" id="newProjName" placeholder="e.g. Biology Presentation" class="w-full mt-1.5 bg-slate-50 border border-slate-200 rounded-xl px-4 py-3.5 text-sm focus:border-primary-500 focus:ring-2 focus:ring-primary-100 transition-all">
+        </div>
+        <div>
+          <label class="text-xs font-medium text-slate-500 uppercase tracking-wider" data-i18n="label.subject">Subject</label>
+          <select id="newProjSubject" class="w-full mt-1.5 bg-slate-50 border border-slate-200 rounded-xl px-4 py-3.5 text-sm focus:border-primary-500 focus:ring-2 focus:ring-primary-100 transition-all appearance-none">
+            <option value="" data-i18n="placeholder.selectSubject">Select subject...</option>
+            <option value="Science">Science</option>
+            <option value="Mathematics">Mathematics</option>
+            <option value="Physics">Physics</option>
+            <option value="Chemistry">Chemistry</option>
+            <option value="Biology">Biology</option>
+            <option value="History">History</option>
+            <option value="Geography">Geography</option>
+            <option value="English">English</option>
+            <option value="Literature">Literature</option>
+            <option value="Computer Science">Computer Science</option>
+            <option value="Economics">Economics</option>
+            <option value="Art">Art</option>
+            <option value="Music">Music</option>
+            <option value="Physical Education">Physical Education</option>
+            <option value="Other">Other</option>
+          </select>
+        </div>
+        <div>
+          <label class="text-xs font-medium text-slate-500 uppercase tracking-wider" data-i18n="label.deadline">Deadline</label>
+          <input type="date" id="newProjDeadline" class="w-full mt-1.5 bg-slate-50 border border-slate-200 rounded-xl px-4 py-3.5 text-sm focus:border-primary-500 focus:ring-2 focus:ring-primary-100 transition-all">
+        </div>
+        <button onclick="app.createProject()" class="w-full bg-primary-600 text-white font-semibold py-3.5 rounded-xl btn-press mt-2" data-i18n="action.createProject">Create Project</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= NEW TASK MODAL ================= -->
+  <div id="newTaskModal" class="fixed inset-0 z-[60] hidden">
+    <div class="modal-overlay absolute inset-0" onclick="app.hideNewTask()"></div>
+    <div class="absolute bottom-0 left-0 right-0 bg-white rounded-t-3xl p-6 slide-up">
+      <div class="w-12 h-1.5 bg-slate-200 rounded-full mx-auto mb-6"></div>
+      <h2 class="text-xl font-bold text-slate-800 mb-6" data-i18n="modal.newTask">New Task</h2>
+
+      <div class="space-y-4">
+        <div>
+          <label class="text-xs font-medium text-slate-500 uppercase tracking-wider" data-i18n="label.taskTitle">Task Title</label>
+          <input type="text" id="newTaskTitle" placeholder="e.g. Research photosynthesis" class="w-full mt-1.5 bg-slate-50 border border-slate-200 rounded-xl px-4 py-3.5 text-sm focus:border-primary-500 focus:ring-2 focus:ring-primary-100 transition-all">
+        </div>
+        <div>
+          <label class="text-xs font-medium text-slate-500 uppercase tracking-wider" data-i18n="label.description">Description</label>
+          <textarea id="newTaskDesc" placeholder="Add details..." rows="3" class="w-full mt-1.5 bg-slate-50 border border-slate-200 rounded-xl px-4 py-3.5 text-sm focus:border-primary-500 focus:ring-2 focus:ring-primary-100 transition-all resize-none"></textarea>
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="text-xs font-medium text-slate-500 uppercase tracking-wider" data-i18n="label.assignTo">Assign To</label>
+            <select id="newTaskAssignee" class="w-full mt-1.5 bg-slate-50 border border-slate-200 rounded-xl px-4 py-3.5 text-sm focus:border-primary-500 focus:ring-2 focus:ring-primary-100 transition-all appearance-none">
+              <option value="" data-i18n="placeholder.selectMember">Select member...</option>
+            </select>
+          </div>
+          <div>
+            <label class="text-xs font-medium text-slate-500 uppercase tracking-wider" data-i18n="label.priority">Priority</label>
+            <select id="newTaskPriority" class="w-full mt-1.5 bg-slate-50 border border-slate-200 rounded-xl px-4 py-3.5 text-sm focus:border-primary-500 focus:ring-2 focus:ring-primary-100 transition-all appearance-none">
+              <option value="low" data-i18n="priority.low">Low</option>
+              <option value="medium" selected data-i18n="priority.medium">Medium</option>
+              <option value="high" data-i18n="priority.high">High</option>
+            </select>
+          </div>
+        </div>
+        <div>
+          <label class="text-xs font-medium text-slate-500 uppercase tracking-wider" data-i18n="label.dueDate">Due Date</label>
+          <input type="date" id="newTaskDue" class="w-full mt-1.5 bg-slate-50 border border-slate-200 rounded-xl px-4 py-3.5 text-sm focus:border-primary-500 focus:ring-2 focus:ring-primary-100 transition-all">
+        </div>
+        <button onclick="app.createTask()" class="w-full bg-primary-600 text-white font-semibold py-3.5 rounded-xl btn-press mt-2" data-i18n="action.addTaskBtn">Add Task</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= INVITE MEMBER MODAL ================= -->
+  <div id="inviteModal" class="fixed inset-0 z-[60] hidden">
+    <div class="modal-overlay absolute inset-0" onclick="app.hideInvite()"></div>
+    <div class="absolute bottom-0 left-0 right-0 bg-white rounded-t-3xl p-6 slide-up">
+      <div class="w-12 h-1.5 bg-slate-200 rounded-full mx-auto mb-6"></div>
+      <h2 class="text-xl font-bold text-slate-800 mb-2" data-i18n="modal.invite">Invite Member</h2>
+      <p class="text-slate-400 text-sm mb-6" data-i18n="modal.inviteSubtitle">Share this link with your teammate</p>
+
+      <div class="bg-slate-50 rounded-xl p-4 mb-4 flex items-center gap-3">
+        <input type="text" id="inviteLink" readonly class="flex-1 bg-transparent text-sm text-slate-600 truncate" value="">
+        <button onclick="app.copyInviteLink()" class="text-primary-600 font-medium text-sm btn-press flex-shrink-0">
+          <i class="fas fa-copy"></i>
+        </button>
+      </div>
+
+      <div class="text-center">
+        <p class="text-xs text-slate-400 mb-3">— <span data-i18n="modal.or">or</span> —</p>
+        <button onclick="app.shareViaWhatsApp()" class="w-full bg-success-500 text-white font-semibold py-3.5 rounded-xl btn-press flex items-center justify-center gap-2">
+          <i class="fab fa-whatsapp text-lg"></i> <span data-i18n="action.shareWhatsApp">Share on WhatsApp</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= TELEGRAM LINK MODAL ================= -->
+  <div id="telegramModal" class="fixed inset-0 z-[60] hidden">
+    <div class="modal-overlay absolute inset-0" onclick="app.hideTelegram()"></div>
+    <div class="absolute bottom-0 left-0 right-0 bg-white rounded-t-3xl p-6 slide-up">
+      <div class="w-12 h-1.5 bg-slate-200 rounded-full mx-auto mb-6"></div>
+      <div class="text-center mb-6">
+        <div class="w-16 h-16 telegram-btn rounded-2xl flex items-center justify-center mx-auto mb-4">
+          <i class="fab fa-telegram text-3xl text-white"></i>
+        </div>
+        <h2 class="text-xl font-bold text-slate-800 mb-2" data-i18n="modal.linkTelegram">Link Telegram</h2>
+        <p class="text-slate-400 text-sm" data-i18n="modal.telegramSubtitle">Get hourly reminders and deadline alerts</p>
+      </div>
+
+      <div class="space-y-4">
+        <div class="bg-slate-50 rounded-xl p-4">
+          <div class="flex items-start gap-3">
+            <div class="w-6 h-6 bg-primary-600 text-white rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 mt-0.5">1</div>
+            <p class="text-sm text-slate-600">Open <a href="https://t.me/ProjectSyncBot" target="_blank" class="text-primary-600 font-medium">@ProjectSyncBot</a> on Telegram</p>
+          </div>
+          <div class="flex items-start gap-3 mt-3">
+            <div class="w-6 h-6 bg-primary-600 text-white rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 mt-0.5">2</div>
+            <p class="text-sm text-slate-600" data-i18n="modal.telegramStep2">Press START and copy your Chat ID</p>
+          </div>
+          <div class="flex items-start gap-3 mt-3">
+            <div class="w-6 h-6 bg-primary-600 text-white rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 mt-0.5">3</div>
+            <p class="text-sm text-slate-600" data-i18n="modal.telegramStep3">Paste it below and tap Link</p>
+          </div>
+        </div>
+
+        <div>
+          <label class="text-xs font-medium text-slate-500 uppercase tracking-wider" data-i18n="label.telegramChatId">Telegram Chat ID</label>
+          <input type="text" id="telegramChatId" placeholder="e.g. 123456789" class="w-full mt-1.5 bg-slate-50 border border-slate-200 rounded-xl px-4 py-3.5 text-sm focus:border-primary-500 focus:ring-2 focus:ring-primary-100 transition-all">
+        </div>
+
+        <div>
+          <label class="text-xs font-medium text-slate-500 uppercase tracking-wider" data-i18n="label.reminderHours">Reminder Hours</label>
+          <div class="flex items-center gap-3 mt-2">
+            <select id="reminderStart" class="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm">
+              <option value="14">2 PM</option>
+              <option value="15">3 PM</option>
+              <option value="16" selected>4 PM</option>
+              <option value="17">5 PM</option>
+            </select>
+            <span class="text-slate-400 text-sm">to</span>
+            <select id="reminderEnd" class="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm">
+              <option value="20">8 PM</option>
+              <option value="21">9 PM</option>
+              <option value="22" selected>10 PM</option>
+              <option value="23">11 PM</option>
+            </select>
+          </div>
+        </div>
+
+        <button onclick="app.linkTelegram()" class="w-full telegram-btn text-white font-semibold py-3.5 rounded-xl btn-press">
+          <i class="fab fa-telegram mr-2"></i> <span data-i18n="action.linkTelegram">Link Telegram</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= LANGUAGE PICKER MODAL ================= -->
+  <div id="languageModal" class="fixed inset-0 z-[60] hidden">
+    <div class="modal-overlay absolute inset-0" onclick="app.hideLanguagePicker()"></div>
+    <div class="absolute bottom-0 left-0 right-0 bg-white rounded-t-3xl p-6 slide-up">
+      <div class="w-12 h-1.5 bg-slate-200 rounded-full mx-auto mb-6"></div>
+      <h2 class="text-xl font-bold text-slate-800 mb-6" data-i18n="modal.selectLanguage">Select Language</h2>
+
+      <div class="space-y-2">
+        <button onclick="app.setLanguage('en')" class="w-full flex items-center gap-3 p-4 rounded-xl bg-slate-50 hover:bg-primary-50 transition-all btn-press text-left">
+          <span class="text-2xl">🇺🇸</span>
+          <div><p class="font-medium text-sm text-slate-800">English</p><p class="text-xs text-slate-400">English</p></div>
+          <i class="fas fa-check text-primary-600 ml-auto hidden" id="check-en"></i>
+        </button>
+        <button onclick="app.setLanguage('ms')" class="w-full flex items-center gap-3 p-4 rounded-xl bg-slate-50 hover:bg-primary-50 transition-all btn-press text-left">
+          <span class="text-2xl">🇲🇾</span>
+          <div><p class="font-medium text-sm text-slate-800">Bahasa Melayu</p><p class="text-xs text-slate-400">Malay</p></div>
+          <i class="fas fa-check text-primary-600 ml-auto hidden" id="check-ms"></i>
+        </button>
+        <button onclick="app.setLanguage('zh')" class="w-full flex items-center gap-3 p-4 rounded-xl bg-slate-50 hover:bg-primary-50 transition-all btn-press text-left">
+          <span class="text-2xl">🇨🇳</span>
+          <div><p class="font-medium text-sm text-slate-800">中文</p><p class="text-xs text-slate-400">Chinese</p></div>
+          <i class="fas fa-check text-primary-600 ml-auto hidden" id="check-zh"></i>
+        </button>
+        <button onclick="app.setLanguage('es')" class="w-full flex items-center gap-3 p-4 rounded-xl bg-slate-50 hover:bg-primary-50 transition-all btn-press text-left">
+          <span class="text-2xl">🇪🇸</span>
+          <div><p class="font-medium text-sm text-slate-800">Español</p><p class="text-xs text-slate-400">Spanish</p></div>
+          <i class="fas fa-check text-primary-600 ml-auto hidden" id="check-es"></i>
+        </button>
+        <button onclick="app.setLanguage('ja')" class="w-full flex items-center gap-3 p-4 rounded-xl bg-slate-50 hover:bg-primary-50 transition-all btn-press text-left">
+          <span class="text-2xl">🇯🇵</span>
+          <div><p class="font-medium text-sm text-slate-800">日本語</p><p class="text-xs text-slate-400">Japanese</p></div>
+          <i class="fas fa-check text-primary-600 ml-auto hidden" id="check-ja"></i>
+        </button>
+        <button onclick="app.setLanguage('ko')" class="w-full flex items-center gap-3 p-4 rounded-xl bg-slate-50 hover:bg-primary-50 transition-all btn-press text-left">
+          <span class="text-2xl">🇰🇷</span>
+          <div><p class="font-medium text-sm text-slate-800">한국어</p><p class="text-xs text-slate-400">Korean</p></div>
+          <i class="fas fa-check text-primary-600 ml-auto hidden" id="check-ko"></i>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= NOTIFICATIONS MODAL ================= -->
+  <div id="notificationsModal" class="fixed inset-0 z-[60] hidden">
+    <div class="modal-overlay absolute inset-0" onclick="app.hideNotifications()"></div>
+    <div class="absolute right-0 top-0 bottom-0 w-full max-w-sm bg-white slide-up">
+      <div class="p-4 border-b border-slate-100 flex items-center justify-between">
+        <h2 class="font-bold text-slate-800" data-i18n="modal.notifications">Notifications</h2>
+        <button onclick="app.hideNotifications()" class="w-8 h-8 rounded-lg bg-slate-50 flex items-center justify-center btn-press">
+          <i class="fas fa-times text-slate-400 text-sm"></i>
+        </button>
+      </div>
+      <div id="notificationsList" class="p-4 space-y-3 overflow-y-auto" style="max-height: calc(100vh - 60px);"></div>
+    </div>
+  </div>
+
+  <!-- ================= PROFILE / SETTINGS MODAL ================= -->
+  <div id="profileModal" class="fixed inset-0 z-[60] hidden">
+    <div class="modal-overlay absolute inset-0" onclick="app.hideProfile()"></div>
+    <div class="absolute bottom-0 left-0 right-0 bg-white rounded-t-3xl p-6 slide-up max-h-[90vh] overflow-y-auto">
+      <div class="w-12 h-1.5 bg-slate-200 rounded-full mx-auto mb-6"></div>
+
+      <div class="text-center mb-6">
+        <div class="w-20 h-20 rounded-full overflow-hidden mx-auto mb-3 ring-4 ring-primary-100">
+          <img id="profileAvatar" src="" class="w-full h-full object-cover" alt="">
+        </div>
+        <h2 class="font-bold text-slate-800 text-lg" id="profileName">User</h2>
+        <p class="text-slate-400 text-sm" id="profileEmail">email@example.com</p>
+        <div id="eduLevelBadge" class="mt-2 inline-block"></div>
+      </div>
+
+      <div class="space-y-2 mb-6">
+        <div class="flex items-center justify-between p-4 bg-slate-50 rounded-xl">
+          <div class="flex items-center gap-3">
+            <div class="w-9 h-9 bg-primary-100 rounded-lg flex items-center justify-center">
+              <i class="fas fa-globe text-primary-600 text-sm"></i>
+            </div>
+            <div>
+              <p class="font-medium text-sm text-slate-800" data-i18n="label.language">Language</p>
+              <p class="text-xs text-slate-400" id="currentLanguage">English</p>
+            </div>
+          </div>
+          <button onclick="app.showLanguagePicker()" class="text-primary-600 text-xs font-medium btn-press" data-i18n="action.change">Change</button>
+        </div>
+
+        <div class="flex items-center justify-between p-4 bg-slate-50 rounded-xl">
+          <div class="flex items-center gap-3">
+            <div class="w-9 h-9 bg-primary-100 rounded-lg flex items-center justify-center">
+              <i class="fas fa-clock text-primary-600 text-sm"></i>
+            </div>
+            <div>
+              <p class="font-medium text-sm text-slate-800" data-i18n="label.timezone">Timezone</p>
+              <p class="text-xs text-slate-400" id="currentTimezone">Auto-detected</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="flex items-center justify-between p-4 bg-slate-50 rounded-xl" id="telegramStatusRow">
+          <div class="flex items-center gap-3">
+            <div class="w-9 h-9 bg-[#0088cc]/10 rounded-lg flex items-center justify-center">
+              <i class="fab fa-telegram text-[#0088cc] text-sm"></i>
+            </div>
+            <div>
+              <p class="font-medium text-sm text-slate-800">Telegram</p>
+              <p class="text-xs text-slate-400" id="telegramStatusText">Not linked</p>
+            </div>
+          </div>
+          <button onclick="app.showTelegramLink()" class="text-primary-600 text-xs font-medium btn-press" id="telegramLinkBtn">Link</button>
+        </div>
+      </div>
+
+      <button onclick="app.signOut()" class="w-full bg-accent-50 text-accent-600 font-semibold py-3.5 rounded-xl btn-press border border-accent-100">
+        <i class="fas fa-sign-out-alt mr-2"></i> <span data-i18n="action.signOut">Sign Out</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- ================= TOAST ================= -->
+  <div id="toast" class="fixed top-20 left-1/2 -translate-x-1/2 z-[70] hidden">
+    <div class="bg-slate-800 text-white px-5 py-3 rounded-xl text-sm font-medium shadow-lg flex items-center gap-2">
+      <i class="fas fa-check-circle text-success-400" id="toastIcon"></i>
+      <span id="toastMessage">Done!</span>
+    </div>
+  </div>
+
+  <!-- ================= LOADING OVERLAY ================= -->
+  <div id="loadingOverlay" class="fixed inset-0 z-[80] bg-white/80 backdrop-blur-sm hidden flex items-center justify-center">
+    <div class="flex flex-col items-center gap-3">
+      <div class="w-10 h-10 border-3 border-primary-200 border-t-primary-600 rounded-full animate-spin"></div>
+      <p class="text-sm text-slate-500 font-medium">Loading...</p>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+  <script src="app.js"></script>
+<script src="stripe_integration.js"></script>
+</body>
+</html>

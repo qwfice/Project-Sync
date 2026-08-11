@@ -63,7 +63,7 @@ const app = {
     this.showLoading(true);
     const { error } = await supabaseClient.auth.signInWithOAuth({
       provider: 'google',
-      options: { redirectTo: window.location.origin }
+      options: { redirectTo: window.location.origin + '/app' }
     });
     if (error) this.showToast(error.message, 'error');
     this.showLoading(false);
@@ -631,7 +631,7 @@ const app = {
 
   // ===================== INVITE =====================
   showInviteMember() {
-    const link = window.location.origin + '?join=' + this.currentProject.id;
+    const link = window.location.origin + '/app?join=' + this.currentProject.id;
     document.getElementById('inviteLink').value = link;
     document.getElementById('inviteModal').classList.remove('hidden');
   },
@@ -763,6 +763,26 @@ const app = {
   showProfile() {
     document.getElementById('profileModal').classList.remove('hidden');
     this.checkTelegramStatus();
+    this.updateProStatus();
+  },
+
+  updateProStatus() {
+    const isPro = !!this.userProfile?.is_pro;
+    const text = document.getElementById('proStatusText');
+    const btn = document.getElementById('proUpgradeBtn');
+    if (!text || !btn) return;
+
+    if (isPro) {
+      text.textContent = 'Active — thanks for supporting ProjectSync!';
+      btn.textContent = 'Active';
+      btn.disabled = true;
+      btn.classList.add('opacity-50', 'pointer-events-none');
+    } else {
+      text.textContent = '$3/month, cancel anytime';
+      btn.textContent = 'Upgrade';
+      btn.disabled = false;
+      btn.classList.remove('opacity-50', 'pointer-events-none');
+    }
   },
 
   hideProfile() {

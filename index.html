@@ -586,6 +586,19 @@
           </div>
           <button onclick="app.showTelegramLink()" class="text-primary-600 text-xs font-medium btn-press" id="telegramLinkBtn">Link</button>
         </div>
+
+        <div class="flex items-center justify-between p-4 bg-slate-50 rounded-xl" id="proStatusRow">
+          <div class="flex items-center gap-3">
+            <div class="w-9 h-9 bg-warning-50 rounded-lg flex items-center justify-center">
+              <i class="fas fa-star text-warning-500 text-sm"></i>
+            </div>
+            <div>
+              <p class="font-medium text-sm text-slate-800">ProjectSync Pro</p>
+              <p class="text-xs text-slate-400" id="proStatusText">$3/month, cancel anytime</p>
+            </div>
+          </div>
+          <button onclick="stripePayments.checkoutPro()" class="text-primary-600 text-xs font-medium btn-press" id="proUpgradeBtn">Upgrade</button>
+        </div>
       </div>
 
       <button onclick="app.signOut()" class="w-full bg-accent-50 text-accent-600 font-semibold py-3.5 rounded-xl btn-press border border-accent-100">
@@ -610,8 +623,7 @@
     </div>
   </div>
 
-  <script src="app.js"></script>
-  <script src="app.js"></script>
-<script src="stripe_integration.js"></script>
+  <script src="/app.js"></script>
+  <script src="/stripe_integration.js"></script>
 </body>
 </html>

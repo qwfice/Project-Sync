@@ -63,15 +63,15 @@ const stripePayments = {
     const priceId = isYearly ? STRIPE_PRICE_ID_YEARLY : STRIPE_PRICE_ID;
 
     // Create checkout session via Supabase Edge Function
-    // (You need to deploy this edge function — see stripe_edge_function.js)
+    // (You need to deploy this edge function — see supabase/functions/create-checkout/index.ts)
     try {
       const { data, error } = await supabaseClient.functions.invoke('create-checkout', {
         body: {
           price_id: priceId,
           user_id: app.user.id,
           email: app.user.email,
-          success_url: window.location.origin + '/?payment=success',
-          cancel_url: window.location.origin + '/?payment=cancel'
+          success_url: window.location.origin + '/app?payment=success',
+          cancel_url: window.location.origin + '/app?payment=cancel'
         }
       });
 

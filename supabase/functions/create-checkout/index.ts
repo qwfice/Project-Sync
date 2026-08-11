@@ -7,8 +7,7 @@
 // 1. Install Supabase CLI: npm install -g supabase
 // 2. supabase login
 // 3. supabase link --project-ref YOUR_PROJECT_REF
-// 4. Create file: supabase/functions/create-checkout/index.ts
-// 5. supabase functions deploy create-checkout
+// 4. supabase functions deploy create-checkout
 //
 // SECRETS (set in Supabase Dashboard > Edge Functions > Secrets):
 // STRIPE_SECRET_KEY = sk_test_... (or sk_live_...)
@@ -71,8 +70,8 @@ serve(async (req) => {
         quantity: 1,
       }],
       mode: 'subscription',
-      success_url: success_url || `${req.headers.get('origin')}/?payment=success`,
-      cancel_url: cancel_url || `${req.headers.get('origin')}/?payment=cancel`,
+      success_url: success_url || `${req.headers.get('origin')}/app?payment=success`,
+      cancel_url: cancel_url || `${req.headers.get('origin')}/app?payment=cancel`,
       metadata: {
         user_id,
         price_id

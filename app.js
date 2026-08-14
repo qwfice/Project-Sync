@@ -513,30 +513,55 @@ const app = {
   // ===================== PROJECT TABS =====================
   setProjectTab(tab) {
     this.projectTab = tab;
+    const cap = t => t.charAt(0).toUpperCase() + t.slice(1);
 
     ['tasks', 'chat', 'files', 'members'].forEach(t => {
-      const btn = document.getElementById('ptab' + t.charAt(0).toUpperCase() + t.slice(1));
-      const panel = document.getElementById('projectPanel' + t.charAt(0).toUpperCase() + t.slice(1));
+      const btn = document.getElementById('ptab' + cap(t));
       if (t === tab) {
         btn.classList.add('bg-white', 'dark:bg-slate-700', 'text-slate-800', 'dark:text-slate-100', 'card-shadow');
         btn.classList.remove('text-slate-400', 'dark:text-slate-500');
-        panel.classList.remove('hidden');
       } else {
         btn.classList.remove('bg-white', 'dark:bg-slate-700', 'text-slate-800', 'dark:text-slate-100', 'card-shadow');
         btn.classList.add('text-slate-400', 'dark:text-slate-500');
-        panel.classList.add('hidden');
       }
     });
 
-    if (tab === 'tasks') this.renderTasks();
-    if (tab === 'files') this.renderFiles();
-    if (tab === 'members') this.renderMembers();
-    if (tab === 'chat') {
-      this.loadChatMessages();
-      this.subscribeToChat(this.currentProject.id);
-    } else {
-      this.unsubscribeChat();
+    // Cross-fade the panel swap instead of an instant hidden-class toggle.
+    // The old panel is found by DOM state (not the tab arg) so the very
+    // first call for a freshly opened project — where Tasks is already the
+    // visible panel — shows content immediately with no pointless fade.
+    const newPanel = document.getElementById('projectPanel' + cap(tab));
+    const oldPanel = ['tasks', 'chat', 'files', 'members']
+      .map(t => document.getElementById('projectPanel' + cap(t)))
+      .find(panel => panel !== newPanel && !panel.classList.contains('hidden'));
+
+    const showNewPanel = () => {
+      if (tab === 'tasks') this.renderTasks();
+      if (tab === 'files') this.renderFiles();
+      if (tab === 'members') this.renderMembers();
+      if (tab === 'chat') {
+        this.loadChatMessages();
+        this.subscribeToChat(this.currentProject.id);
+      } else {
+        this.unsubscribeChat();
+      }
+
+      newPanel.classList.remove('hidden');
+      newPanel.classList.add('panel-fade-hidden');
+      requestAnimationFrame(() => newPanel.classList.remove('panel-fade-hidden'));
+    };
+
+    if (!oldPanel) {
+      showNewPanel();
+      return;
     }
+
+    oldPanel.classList.add('panel-fade-hidden');
+    setTimeout(() => {
+      oldPanel.classList.add('hidden');
+      oldPanel.classList.remove('panel-fade-hidden');
+      showNewPanel();
+    }, 120);
   },
 
   setTaskFilter(filter) {
@@ -690,6 +715,9 @@ const app = {
         const sender = (this.currentProject.members || []).find(m => m.user_id === payload.new.user_id)?.profiles;
         this.chatMessages = this.chatMessages || [];
         this.chatMessages.push({ ...payload.new, profiles: sender });
+        // Only a live-arriving message gets an enter transition — bulk loads
+        // (opening the chat tab, switching projects) render instantly.
+        this._chatEnterId = payload.new.id;
         this.renderChatMessages();
       })
       .subscribe();
@@ -713,6 +741,8 @@ const app = {
     }
 
     const GROUP_GAP_MS = 5 * 60 * 1000;
+    const enterId = this._chatEnterId;
+    this._chatEnterId = null;
 
     container.innerHTML = messages.map((m, i) => {
       const prev = messages[i - 1];
@@ -739,12 +769,20 @@ const app = {
       const timeHtml = isLastInGroup ? '<span class="text-[9px] text-slate-300 dark:text-slate-600 mt-0.5">' + time + '</span>' : '';
       const avatarHtml = !isMe ? (isLastInGroup ? '<img src="' + avatar + '" class="w-6 h-6 rounded-full object-cover flex-shrink-0" alt="">' : '<div class="w-6 flex-shrink-0"></div>') : '';
       const rowMargin = isFirstInGroup ? (i === 0 ? '' : 'mt-3 ') : 'mt-0.5 ';
+      const enterClass = m.id === enterId ? ' msg-enter' : '';
 
-      return '<div class="' + rowMargin + 'flex ' + (isMe ? 'justify-end' : 'justify-start') + '">' +
+      return '<div class="msg-row' + enterClass + ' ' + rowMargin + 'flex ' + (isMe ? 'justify-end' : 'justify-start') + '">' +
         '<div class="inline-flex items-end gap-2 max-w-[80%] ' + (isMe ? 'flex-row-reverse' : '') + '">' +
         avatarHtml +
         '<div class="flex flex-col min-w-0 ' + (isMe ? 'items-end' : 'items-start') + '">' + nameHtml + bodyHtml + timeHtml + '</div></div></div>';
     }).join('');
+
+    if (enterId) {
+      requestAnimationFrame(() => {
+        const el = container.querySelector('.msg-enter');
+        if (el) el.classList.remove('msg-enter');
+      });
+    }
 
     window.scrollTo({ top: document.body.scrollHeight });
   },
@@ -1094,8 +1132,12 @@ const app = {
     }
 
     const btn = document.getElementById('aiBreakdownGenerateBtn');
+    const icon = document.getElementById('aiBreakdownBtnIcon');
+    const text = document.getElementById('aiBreakdownBtnText');
     btn.disabled = true;
     btn.classList.add('opacity-50', 'pointer-events-none');
+    icon.className = 'fas fa-spinner fa-spin';
+    text.textContent = 'Generating...';
 
     const { data, error } = await supabaseClient.functions.invoke('ai-task-breakdown', {
       body: { project_id: this.currentProject.id, subject: this.currentProject.subject, brief }
@@ -1103,6 +1145,8 @@ const app = {
 
     btn.disabled = false;
     btn.classList.remove('opacity-50', 'pointer-events-none');
+    icon.className = 'fas fa-wand-magic-sparkles';
+    text.textContent = 'Generate Tasks';
 
     if (error || data?.error || !data?.tasks?.length) {
       this.showToast(data?.error || 'AI Breakdown failed, please try again', 'error');

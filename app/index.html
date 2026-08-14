@@ -46,10 +46,24 @@
     .glass { background: rgba(255,255,255,0.85); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); }
     .card-shadow { box-shadow: 0 1px 3px rgba(0,0,0,0.08), 0 4px 12px rgba(0,0,0,0.05); }
     .btn-press:active { transform: scale(0.96); }
-    .slide-up { animation: slideUp 0.3s ease-out; }
-    @keyframes slideUp { from { transform: translateY(100%); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
     .fade-in { animation: fadeIn 0.25s ease-out; }
     @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+    /* Bottom sheets / side panel: transition-based so open and close use the
+       same path (JS toggles *-hidden a frame after unhiding to animate in,
+       and waits for transitionend before re-hiding to animate out). */
+    :root { --ease-out: cubic-bezier(0.23, 1, 0.32, 1); }
+    .sheet-panel { transition: transform 250ms var(--ease-out), opacity 250ms var(--ease-out); }
+    .sheet-panel.sheet-hidden { transform: translateY(100%); opacity: 0; }
+    .side-panel { transition: transform 250ms var(--ease-out); }
+    .side-panel.side-hidden { transform: translateX(100%); }
+    .modal-overlay { transition: opacity 200ms ease; }
+    .modal-overlay.overlay-hidden { opacity: 0; }
+    .toast-panel { transition: opacity 200ms var(--ease-out), transform 200ms var(--ease-out); }
+    .toast-panel.toast-hidden { opacity: 0; transform: translateY(-8px); }
+    @media (prefers-reduced-motion: reduce) {
+      .sheet-panel, .side-panel, .modal-overlay, .toast-panel { transition-duration: 1ms; }
+    }
     .progress-ring { transform: rotate(-90deg); }
     .hide-scrollbar::-webkit-scrollbar { display: none; }
     .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
@@ -141,8 +155,8 @@
 
   <!-- ================= EMAIL AUTH MODAL ================= -->
   <div id="emailAuthModal" class="fixed inset-0 z-[60] hidden">
-    <div class="modal-overlay absolute inset-0" onclick="app.hideEmailAuth()"></div>
-    <div class="absolute bottom-0 left-0 right-0 bg-white dark:bg-slate-800 rounded-t-3xl p-6 slide-up max-h-[85vh] overflow-y-auto">
+    <div class="modal-overlay overlay-hidden absolute inset-0" onclick="app.hideEmailAuth()"></div>
+    <div class="sheet-panel sheet-hidden absolute bottom-0 left-0 right-0 bg-white dark:bg-slate-800 rounded-t-3xl p-6 max-h-[85vh] overflow-y-auto">
       <div class="w-12 h-1.5 bg-slate-200 dark:bg-slate-700 rounded-full mx-auto mb-6"></div>
       <h2 class="text-xl font-bold text-slate-800 dark:text-slate-100 mb-1" id="emailAuthTitle">Sign In</h2>
       <p class="text-slate-400 dark:text-slate-500 text-sm mb-6" data-i18n="auth.emailSubtitle">Enter your email to continue</p>
@@ -368,8 +382,8 @@
 
   <!-- ================= NEW PROJECT MODAL ================= -->
   <div id="newProjectModal" class="fixed inset-0 z-[60] hidden">
-    <div class="modal-overlay absolute inset-0" onclick="app.hideNewProject()"></div>
-    <div class="absolute bottom-0 left-0 right-0 bg-white dark:bg-slate-800 rounded-t-3xl p-6 slide-up">
+    <div class="modal-overlay overlay-hidden absolute inset-0" onclick="app.hideNewProject()"></div>
+    <div class="sheet-panel sheet-hidden absolute bottom-0 left-0 right-0 bg-white dark:bg-slate-800 rounded-t-3xl p-6">
       <div class="w-12 h-1.5 bg-slate-200 dark:bg-slate-700 rounded-full mx-auto mb-6"></div>
       <h2 class="text-xl font-bold text-slate-800 dark:text-slate-100 mb-6" data-i18n="modal.newProject">New Project</h2>
 
@@ -410,8 +424,8 @@
 
   <!-- ================= NEW TASK MODAL ================= -->
   <div id="newTaskModal" class="fixed inset-0 z-[60] hidden">
-    <div class="modal-overlay absolute inset-0" onclick="app.hideNewTask()"></div>
-    <div class="absolute bottom-0 left-0 right-0 bg-white dark:bg-slate-800 rounded-t-3xl p-6 slide-up">
+    <div class="modal-overlay overlay-hidden absolute inset-0" onclick="app.hideNewTask()"></div>
+    <div class="sheet-panel sheet-hidden absolute bottom-0 left-0 right-0 bg-white dark:bg-slate-800 rounded-t-3xl p-6">
       <div class="w-12 h-1.5 bg-slate-200 dark:bg-slate-700 rounded-full mx-auto mb-6"></div>
       <h2 class="text-xl font-bold text-slate-800 dark:text-slate-100 mb-6" data-i18n="modal.newTask">New Task</h2>
 
@@ -451,8 +465,8 @@
 
   <!-- ================= AI TASK BREAKDOWN MODAL ================= -->
   <div id="aiBreakdownModal" class="fixed inset-0 z-[60] hidden">
-    <div class="modal-overlay absolute inset-0" onclick="app.hideAiBreakdown()"></div>
-    <div class="absolute bottom-0 left-0 right-0 bg-white dark:bg-slate-800 rounded-t-3xl p-6 slide-up max-h-[85vh] overflow-y-auto">
+    <div class="modal-overlay overlay-hidden absolute inset-0" onclick="app.hideAiBreakdown()"></div>
+    <div class="sheet-panel sheet-hidden absolute bottom-0 left-0 right-0 bg-white dark:bg-slate-800 rounded-t-3xl p-6 max-h-[85vh] overflow-y-auto">
       <div class="w-12 h-1.5 bg-slate-200 dark:bg-slate-700 rounded-full mx-auto mb-6"></div>
       <div class="flex items-center gap-3 mb-2">
         <div class="w-9 h-9 bg-primary-100 dark:bg-primary-900/30 rounded-lg flex items-center justify-center">
@@ -480,8 +494,8 @@
 
   <!-- ================= INVITE MEMBER MODAL ================= -->
   <div id="inviteModal" class="fixed inset-0 z-[60] hidden">
-    <div class="modal-overlay absolute inset-0" onclick="app.hideInvite()"></div>
-    <div class="absolute bottom-0 left-0 right-0 bg-white dark:bg-slate-800 rounded-t-3xl p-6 slide-up">
+    <div class="modal-overlay overlay-hidden absolute inset-0" onclick="app.hideInvite()"></div>
+    <div class="sheet-panel sheet-hidden absolute bottom-0 left-0 right-0 bg-white dark:bg-slate-800 rounded-t-3xl p-6">
       <div class="w-12 h-1.5 bg-slate-200 dark:bg-slate-700 rounded-full mx-auto mb-6"></div>
       <h2 class="text-xl font-bold text-slate-800 dark:text-slate-100 mb-2" data-i18n="modal.invite">Invite Member</h2>
       <p class="text-slate-400 dark:text-slate-500 text-sm mb-1" data-i18n="modal.inviteSubtitle">Share this link with your teammate</p>
@@ -505,8 +519,8 @@
 
   <!-- ================= PROJECT STATS MODAL (Pro) ================= -->
   <div id="statsModal" class="fixed inset-0 z-[60] hidden">
-    <div class="modal-overlay absolute inset-0" onclick="app.hideStats()"></div>
-    <div class="absolute bottom-0 left-0 right-0 bg-white dark:bg-slate-800 rounded-t-3xl p-6 slide-up max-h-[85vh] overflow-y-auto">
+    <div class="modal-overlay overlay-hidden absolute inset-0" onclick="app.hideStats()"></div>
+    <div class="sheet-panel sheet-hidden absolute bottom-0 left-0 right-0 bg-white dark:bg-slate-800 rounded-t-3xl p-6 max-h-[85vh] overflow-y-auto">
       <div class="w-12 h-1.5 bg-slate-200 dark:bg-slate-700 rounded-full mx-auto mb-6"></div>
       <div class="flex items-center gap-3 mb-6">
         <div class="w-9 h-9 bg-warning-50 dark:bg-warning-500/10 rounded-lg flex items-center justify-center">
@@ -521,8 +535,8 @@
 
   <!-- ================= TELEGRAM LINK MODAL ================= -->
   <div id="telegramModal" class="fixed inset-0 z-[60] hidden">
-    <div class="modal-overlay absolute inset-0" onclick="app.hideTelegram()"></div>
-    <div class="absolute bottom-0 left-0 right-0 bg-white dark:bg-slate-800 rounded-t-3xl p-6 slide-up">
+    <div class="modal-overlay overlay-hidden absolute inset-0" onclick="app.hideTelegram()"></div>
+    <div class="sheet-panel sheet-hidden absolute bottom-0 left-0 right-0 bg-white dark:bg-slate-800 rounded-t-3xl p-6">
       <div class="w-12 h-1.5 bg-slate-200 dark:bg-slate-700 rounded-full mx-auto mb-6"></div>
       <div class="text-center mb-6">
         <div class="w-16 h-16 telegram-btn rounded-2xl flex items-center justify-center mx-auto mb-4">
@@ -581,8 +595,8 @@
 
   <!-- ================= LANGUAGE PICKER MODAL ================= -->
   <div id="languageModal" class="fixed inset-0 z-[60] hidden">
-    <div class="modal-overlay absolute inset-0" onclick="app.hideLanguagePicker()"></div>
-    <div class="absolute bottom-0 left-0 right-0 bg-white dark:bg-slate-800 rounded-t-3xl p-6 slide-up">
+    <div class="modal-overlay overlay-hidden absolute inset-0" onclick="app.hideLanguagePicker()"></div>
+    <div class="sheet-panel sheet-hidden absolute bottom-0 left-0 right-0 bg-white dark:bg-slate-800 rounded-t-3xl p-6">
       <div class="w-12 h-1.5 bg-slate-200 dark:bg-slate-700 rounded-full mx-auto mb-6"></div>
       <h2 class="text-xl font-bold text-slate-800 dark:text-slate-100 mb-6" data-i18n="modal.selectLanguage">Select Language</h2>
 
@@ -623,8 +637,8 @@
 
   <!-- ================= NOTIFICATIONS MODAL ================= -->
   <div id="notificationsModal" class="fixed inset-0 z-[60] hidden">
-    <div class="modal-overlay absolute inset-0" onclick="app.hideNotifications()"></div>
-    <div class="absolute right-0 top-0 bottom-0 w-full max-w-sm bg-white dark:bg-slate-800 slide-up">
+    <div class="modal-overlay overlay-hidden absolute inset-0" onclick="app.hideNotifications()"></div>
+    <div class="side-panel side-hidden absolute right-0 top-0 bottom-0 w-full max-w-sm bg-white dark:bg-slate-800">
       <div class="p-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
         <h2 class="font-bold text-slate-800 dark:text-slate-100" data-i18n="modal.notifications">Notifications</h2>
         <button onclick="app.hideNotifications()" class="w-8 h-8 rounded-lg bg-slate-50 dark:bg-slate-900 flex items-center justify-center btn-press">
@@ -637,8 +651,8 @@
 
   <!-- ================= PROFILE / SETTINGS MODAL ================= -->
   <div id="profileModal" class="fixed inset-0 z-[60] hidden">
-    <div class="modal-overlay absolute inset-0" onclick="app.hideProfile()"></div>
-    <div class="absolute bottom-0 left-0 right-0 bg-white dark:bg-slate-800 rounded-t-3xl p-6 slide-up max-h-[90vh] overflow-y-auto">
+    <div class="modal-overlay overlay-hidden absolute inset-0" onclick="app.hideProfile()"></div>
+    <div class="sheet-panel sheet-hidden absolute bottom-0 left-0 right-0 bg-white dark:bg-slate-800 rounded-t-3xl p-6 max-h-[90vh] overflow-y-auto">
       <div class="w-12 h-1.5 bg-slate-200 dark:bg-slate-700 rounded-full mx-auto mb-6"></div>
 
       <div class="text-center mb-6">
@@ -728,8 +742,8 @@
 
   <!-- ================= STICKER PICKER MODAL ================= -->
   <div id="stickerPickerModal" class="fixed inset-0 z-[65] hidden">
-    <div class="modal-overlay absolute inset-0" onclick="app.hideStickerPicker()"></div>
-    <div class="absolute bottom-0 left-0 right-0 bg-white dark:bg-slate-800 rounded-t-3xl p-6 slide-up max-h-[75vh] overflow-y-auto">
+    <div class="modal-overlay overlay-hidden absolute inset-0" onclick="app.hideStickerPicker()"></div>
+    <div class="sheet-panel sheet-hidden absolute bottom-0 left-0 right-0 bg-white dark:bg-slate-800 rounded-t-3xl p-6 max-h-[75vh] overflow-y-auto">
       <div class="w-12 h-1.5 bg-slate-200 dark:bg-slate-700 rounded-full mx-auto mb-6"></div>
 
       <div class="flex gap-1.5 mb-4 bg-slate-100 dark:bg-slate-900 p-1 rounded-xl">
@@ -747,7 +761,7 @@
 
   <!-- ================= TOAST ================= -->
   <div id="toast" class="fixed top-20 left-1/2 -translate-x-1/2 z-[70] hidden">
-    <div class="bg-slate-800 text-white px-5 py-3 rounded-xl text-sm font-medium shadow-lg flex items-center gap-2">
+    <div class="toast-panel toast-hidden bg-slate-800 text-white px-5 py-3 rounded-xl text-sm font-medium shadow-lg flex items-center gap-2">
       <i class="fas fa-check-circle text-success-400" id="toastIcon"></i>
       <span id="toastMessage">Done!</span>
     </div>

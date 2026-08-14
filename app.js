@@ -91,6 +91,43 @@ const app = {
     });
   },
 
+  // ===================== SHEETS / MODALS =====================
+  // Shared open/close for bottom sheets and the notifications side panel.
+  // Sheets sit closed (sheet-hidden / side-hidden) by default in the DOM;
+  // openSheet un-hides the wrapper then removes that class a frame later so
+  // the transition actually runs, and closeSheet reverses it — waiting for
+  // transitionend (with a timeout fallback) before re-hiding the wrapper —
+  // so close mirrors open instead of teleporting away.
+  openSheet(modalId) {
+    const modal = document.getElementById(modalId);
+    const panel = modal.querySelector('.sheet-panel, .side-panel');
+    const overlay = modal.querySelector('.modal-overlay');
+    modal.classList.remove('hidden');
+    requestAnimationFrame(() => {
+      if (overlay) overlay.classList.remove('overlay-hidden');
+      if (panel) panel.classList.remove('sheet-hidden', 'side-hidden');
+    });
+  },
+
+  closeSheet(modalId) {
+    const modal = document.getElementById(modalId);
+    if (modal.classList.contains('hidden')) return;
+
+    const panel = modal.querySelector('.sheet-panel, .side-panel');
+    const overlay = modal.querySelector('.modal-overlay');
+    if (overlay) overlay.classList.add('overlay-hidden');
+
+    if (!panel) {
+      modal.classList.add('hidden');
+      return;
+    }
+
+    const finish = () => modal.classList.add('hidden');
+    panel.addEventListener('transitionend', finish, { once: true });
+    setTimeout(finish, 300);
+    panel.classList.add(panel.classList.contains('side-panel') ? 'side-hidden' : 'sheet-hidden');
+  },
+
   // ===================== AUTH =====================
   showAuthScreen() {
     document.getElementById('authScreen').classList.remove('hidden');
@@ -114,13 +151,13 @@ const app = {
   },
 
   showEmailAuth() {
-    document.getElementById('emailAuthModal').classList.remove('hidden');
+    this.openSheet('emailAuthModal');
     this.emailAuthMode = 'signin';
     this.updateEmailAuthUI();
   },
 
   hideEmailAuth() {
-    document.getElementById('emailAuthModal').classList.add('hidden');
+    this.closeSheet('emailAuthModal');
   },
 
   toggleEmailAuthMode() {
@@ -670,12 +707,12 @@ const app = {
 
   // ===================== STICKERS =====================
   showStickerPicker() {
-    document.getElementById('stickerPickerModal').classList.remove('hidden');
+    this.openSheet('stickerPickerModal');
     this.setStickerTab('builtin');
   },
 
   hideStickerPicker() {
-    document.getElementById('stickerPickerModal').classList.add('hidden');
+    this.closeSheet('stickerPickerModal');
   },
 
   setStickerTab(tab) {
@@ -823,23 +860,23 @@ const app = {
       '<h3 class="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-3">Member activity</h3>' +
       memberHtml;
 
-    document.getElementById('statsModal').classList.remove('hidden');
+    this.openSheet('statsModal');
   },
 
   hideStats() {
-    document.getElementById('statsModal').classList.add('hidden');
+    this.closeSheet('statsModal');
   },
 
   // ===================== CRUD =====================
   showNewProject() {
-    document.getElementById('newProjectModal').classList.remove('hidden');
+    this.openSheet('newProjectModal');
     document.getElementById('newProjName').value = '';
     document.getElementById('newProjSubject').value = '';
     document.getElementById('newProjDeadline').value = '';
   },
 
   hideNewProject() {
-    document.getElementById('newProjectModal').classList.add('hidden');
+    this.closeSheet('newProjectModal');
   },
 
   async createProject() {
@@ -885,7 +922,7 @@ const app = {
       this.showToast('Only the project leader can add tasks', 'error');
       return;
     }
-    document.getElementById('newTaskModal').classList.remove('hidden');
+    this.openSheet('newTaskModal');
     document.getElementById('newTaskTitle').value = '';
     document.getElementById('newTaskDesc').value = '';
     document.getElementById('newTaskAssignee').value = '';
@@ -894,7 +931,7 @@ const app = {
   },
 
   hideNewTask() {
-    document.getElementById('newTaskModal').classList.add('hidden');
+    this.closeSheet('newTaskModal');
   },
 
   async createTask() {
@@ -956,11 +993,11 @@ const app = {
       return;
     }
     this.resetAiBreakdown();
-    document.getElementById('aiBreakdownModal').classList.remove('hidden');
+    this.openSheet('aiBreakdownModal');
   },
 
   hideAiBreakdown() {
-    document.getElementById('aiBreakdownModal').classList.add('hidden');
+    this.closeSheet('aiBreakdownModal');
   },
 
   resetAiBreakdown() {
@@ -1180,11 +1217,11 @@ const app = {
       limitText.classList.toggle('text-accent-500', memberCount >= limits.members);
     }
 
-    document.getElementById('inviteModal').classList.remove('hidden');
+    this.openSheet('inviteModal');
   },
 
   hideInvite() {
-    document.getElementById('inviteModal').classList.add('hidden');
+    this.closeSheet('inviteModal');
   },
 
   copyInviteLink() {
@@ -1202,12 +1239,12 @@ const app = {
 
   // ===================== TELEGRAM =====================
   showTelegramLink() {
-    document.getElementById('telegramModal').classList.remove('hidden');
+    this.openSheet('telegramModal');
     document.getElementById('telegramChatId').value = this.userProfile?.telegram_chat_id || '';
   },
 
   hideTelegram() {
-    document.getElementById('telegramModal').classList.add('hidden');
+    this.closeSheet('telegramModal');
   },
 
   async linkTelegram() {
@@ -1264,7 +1301,7 @@ const app = {
 
   // ===================== NOTIFICATIONS =====================
   async showNotifications() {
-    document.getElementById('notificationsModal').classList.remove('hidden');
+    this.openSheet('notificationsModal');
 
     const { data: notifications } = await supabaseClient
       .from('notifications')
@@ -1303,12 +1340,12 @@ const app = {
   },
 
   hideNotifications() {
-    document.getElementById('notificationsModal').classList.add('hidden');
+    this.closeSheet('notificationsModal');
   },
 
   // ===================== PROFILE =====================
   showProfile() {
-    document.getElementById('profileModal').classList.remove('hidden');
+    this.openSheet('profileModal');
     this.checkTelegramStatus();
     this.updateProStatus();
   },
@@ -1333,7 +1370,7 @@ const app = {
   },
 
   hideProfile() {
-    document.getElementById('profileModal').classList.add('hidden');
+    this.closeSheet('profileModal');
   },
 
   showSettings() {
@@ -1361,17 +1398,22 @@ const app = {
   // ===================== UTILITIES =====================
   showToast(message, type) {
     const toast = document.getElementById('toast');
+    const panel = toast.querySelector('.toast-panel');
     const icon = document.getElementById('toastIcon');
     const msg = document.getElementById('toastMessage');
 
     msg.textContent = message;
     icon.className = type === 'error' ? 'fas fa-exclamation-circle text-accent-500' : 'fas fa-check-circle text-success-400';
 
-    toast.classList.remove('hidden');
-    toast.classList.add('fade-in');
+    clearTimeout(this._toastHideTimer);
+    clearTimeout(this._toastCloseTimer);
 
-    setTimeout(() => {
-      toast.classList.add('hidden');
+    toast.classList.remove('hidden');
+    requestAnimationFrame(() => panel.classList.remove('toast-hidden'));
+
+    this._toastHideTimer = setTimeout(() => {
+      panel.classList.add('toast-hidden');
+      this._toastCloseTimer = setTimeout(() => toast.classList.add('hidden'), 200);
     }, 3000);
   },
 

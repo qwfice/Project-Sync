@@ -18,6 +18,22 @@ const PLAN_LIMITS = {
 
 const BUILTIN_STICKERS = ['😀', '😂', '❤️', '🎉', '🔥', '👍', '👏', '😢', '😮', '🙏', '💯', '✅', '❌', '🥳', '😴', '🤔'];
 
+const LANGUAGES = {
+  en: { code: 'EN', name: 'English' },
+  ms: { code: 'MS', name: 'Bahasa Melayu' },
+  zh: { code: '中文', name: '中文' },
+  es: { code: 'ES', name: 'Español' },
+  ja: { code: 'JA', name: '日本語' },
+  ko: { code: 'KO', name: '한국어' },
+};
+
+const EDU_LEVELS = {
+  middle: { label: 'Middle School', badgeClass: 'edu-middle' },
+  high: { label: 'High School', badgeClass: 'edu-high' },
+  uni: { label: 'University', badgeClass: 'edu-uni' },
+  self: { label: 'Self-Learner', badgeClass: 'edu-self' },
+};
+
 const app = {
   user: null,
   userProfile: null,
@@ -34,6 +50,7 @@ const app = {
   async init() {
     this.showLoading(true);
     this.initTheme();
+    this.initLanguage();
 
     const { data: { session } } = await supabaseClient.auth.getSession();
 
@@ -89,6 +106,63 @@ const app = {
       const btn = document.getElementById('themeBtn' + m.charAt(0).toUpperCase() + m.slice(1));
       if (btn) btn.classList.toggle('active', m === mode);
     });
+  },
+
+  // ===================== LANGUAGE =====================
+  initLanguage() {
+    this.language = localStorage.getItem('language') || 'en';
+    this.applyLanguageUI();
+  },
+
+  setLanguage(lang) {
+    if (!LANGUAGES[lang]) return;
+    this.language = lang;
+    localStorage.setItem('language', lang);
+    this.applyLanguageUI();
+    this.hideLanguagePicker();
+  },
+
+  applyLanguageUI() {
+    const info = LANGUAGES[this.language] || LANGUAGES.en;
+
+    const indicator = document.getElementById('langIndicator');
+    if (indicator) indicator.textContent = info.code;
+
+    const currentLanguageEl = document.getElementById('currentLanguage');
+    if (currentLanguageEl) currentLanguageEl.textContent = info.name;
+
+    document.querySelectorAll('.lang-btn').forEach(btn => {
+      btn.classList.toggle('active', btn.dataset.lang === this.language);
+    });
+
+    Object.keys(LANGUAGES).forEach(code => {
+      const check = document.getElementById('check-' + code);
+      if (check) check.classList.toggle('hidden', code !== this.language);
+    });
+  },
+
+  showLanguagePicker() {
+    this.openSheet('languageModal');
+  },
+
+  hideLanguagePicker() {
+    this.closeSheet('languageModal');
+  },
+
+  // ===================== EDUCATION LEVEL =====================
+  setEduLevel(level) {
+    if (!EDU_LEVELS[level]) return;
+    this.eduLevel = level;
+    document.querySelectorAll('.edu-level-btn').forEach(btn => {
+      btn.classList.toggle('active', btn.dataset.edu === level);
+    });
+  },
+
+  renderEduLevelBadge() {
+    const badge = document.getElementById('eduLevelBadge');
+    if (!badge) return;
+    const info = EDU_LEVELS[this.userProfile?.edu_level] || EDU_LEVELS.high;
+    badge.innerHTML = '<span class="edu-level-badge ' + info.badgeClass + '">' + info.label + '</span>';
   },
 
   // ===================== SHEETS / MODALS =====================
@@ -218,6 +292,9 @@ const app = {
   async loadUserProfile() {
     if (!this.user) return;
 
+    // edu_level is only included when the auth-screen selector was actually
+    // touched this session (undefined keys are dropped by JSON.stringify),
+    // so returning users don't have their saved level silently overwritten.
     const { data, error } = await supabaseClient
       .from('profiles')
       .upsert({
@@ -226,6 +303,7 @@ const app = {
         name: this.user.user_metadata?.full_name || this.user.email.split('@')[0],
         avatar_url: this.user.user_metadata?.avatar_url || '',
         school: 'SMK Bukit Mertajam',
+        edu_level: this.eduLevel,
         updated_at: new Date().toISOString()
       }, { onConflict: 'id' })
       .select()
@@ -234,6 +312,7 @@ const app = {
     if (data) {
       this.userProfile = data;
       this.updateHeader();
+      this.renderEduLevelBadge();
     }
   },
 
@@ -1348,6 +1427,7 @@ const app = {
     this.openSheet('profileModal');
     this.checkTelegramStatus();
     this.updateProStatus();
+    this.renderEduLevelBadge();
   },
 
   updateProStatus() {

@@ -8,17 +8,32 @@ const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
 
 const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
+// ============================================================
+// PLAN LIMITS — Free vs Pro ($5/mo)
+// ============================================================
+const PLAN_LIMITS = {
+  free: { projects: 5, members: 8, storageBytes: 1 * 1024 * 1024 * 1024 },
+  pro: { projects: Infinity, members: Infinity, storageBytes: 5 * 1024 * 1024 * 1024 },
+};
+
+const BUILTIN_STICKERS = ['😀', '😂', '❤️', '🎉', '🔥', '👍', '👏', '😢', '😮', '🙏', '💯', '✅', '❌', '🥳', '😴', '🤔'];
+
 const app = {
   user: null,
   userProfile: null,
   projects: [],
   currentProject: null,
   taskFilter: 'all',
+  projectTab: 'tasks',
+  stickerTab: 'builtin',
+  chatChannel: null,
+  aiSuggestions: [],
   emailAuthMode: 'signin',
 
   // ===================== INIT =====================
   async init() {
     this.showLoading(true);
+    this.initTheme();
 
     const { data: { session } } = await supabaseClient.auth.getSession();
 
@@ -42,8 +57,37 @@ const app = {
       } else if (event === 'SIGNED_OUT') {
         this.user = null;
         this.userProfile = null;
+        this.unsubscribeChat();
         this.showAuthScreen();
       }
+    });
+  },
+
+  // ===================== THEME =====================
+  initTheme() {
+    this.updateThemeButtons();
+    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
+      if ((localStorage.getItem('theme') || 'system') === 'system') this.applyTheme();
+    });
+  },
+
+  applyTheme() {
+    const stored = localStorage.getItem('theme') || 'system';
+    const isDark = stored === 'dark' || (stored === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+    document.documentElement.classList.toggle('dark', isDark);
+  },
+
+  setTheme(mode) {
+    localStorage.setItem('theme', mode);
+    this.applyTheme();
+    this.updateThemeButtons();
+  },
+
+  updateThemeButtons() {
+    const mode = localStorage.getItem('theme') || 'system';
+    ['light', 'dark', 'system'].forEach(m => {
+      const btn = document.getElementById('themeBtn' + m.charAt(0).toUpperCase() + m.slice(1));
+      if (btn) btn.classList.toggle('active', m === mode);
     });
   },
 
@@ -191,7 +235,7 @@ const app = {
         *,
         tasks:tasks(*),
         files:files(*),
-        members:project_members(user_id, role, profiles(id, name, avatar_url))
+        members:project_members(user_id, role, profiles(id, name, avatar_url, is_pro))
       `)
       .in('id', projectIds)
       .order('created_at', { ascending: false });
@@ -243,17 +287,17 @@ const app = {
 
     let deadlinesHtml = '';
     if (upcoming.length === 0) {
-      deadlinesHtml = '<div class="bg-white rounded-2xl p-6 text-center card-shadow"><div class="w-12 h-12 bg-success-50 rounded-full flex items-center justify-center mx-auto mb-2"><i class="fas fa-check text-success-500"></i></div><p class="text-sm text-slate-400">No upcoming deadlines!</p></div>';
+      deadlinesHtml = '<div class="bg-white dark:bg-slate-800 rounded-2xl p-6 text-center card-shadow"><div class="w-12 h-12 bg-success-50 dark:bg-success-500/10 rounded-full flex items-center justify-center mx-auto mb-2"><i class="fas fa-check text-success-500"></i></div><p class="text-sm text-slate-400 dark:text-slate-500">No upcoming deadlines!</p></div>';
     } else {
       deadlinesHtml = upcoming.map(t => {
         const daysLeft = Math.ceil((new Date(t.due_date) - new Date()) / (1000 * 60 * 60 * 24));
         const isUrgent = daysLeft <= 1;
         const isSoon = daysLeft <= 3;
-        const colorClass = isUrgent ? 'bg-accent-50 border-accent-200' : isSoon ? 'bg-warning-50 border-warning-200' : 'bg-white border-slate-100';
-        const iconColor = isUrgent ? 'text-accent-500' : isSoon ? 'text-warning-500' : 'text-slate-400';
+        const colorClass = isUrgent ? 'bg-accent-50 dark:bg-accent-500/10 border-accent-200 dark:border-accent-500/30' : isSoon ? 'bg-warning-50 dark:bg-warning-500/10 border-warning-200 dark:border-warning-500/30' : 'bg-white dark:bg-slate-800 border-slate-100 dark:border-slate-800';
+        const iconColor = isUrgent ? 'text-accent-500' : isSoon ? 'text-warning-500' : 'text-slate-400 dark:text-slate-500';
         const dueText = daysLeft < 0 ? 'Overdue' : daysLeft === 0 ? 'Due today' : daysLeft === 1 ? 'Due tomorrow' : daysLeft + ' days left';
 
-        return '<div class="' + colorClass + ' border rounded-2xl p-4 card-shadow flex items-center gap-3 cursor-pointer btn-press" onclick="app.openProject(\'' + t.project_id + '\')"><div class="w-10 h-10 rounded-xl bg-white flex items-center justify-center flex-shrink-0"><i class="fas fa-clock ' + iconColor + ' text-sm"></i></div><div class="flex-1 min-w-0"><p class="font-medium text-sm text-slate-800 truncate">' + this.escapeHtml(t.title) + '</p><p class="text-xs text-slate-400">' + this.escapeHtml(t.projectName) + ' &bull; ' + dueText + '</p></div><span class="text-xs font-medium ' + (isUrgent ? 'text-accent-500' : isSoon ? 'text-warning-500' : 'text-slate-400') + '">' + dueText + '</span></div>';
+        return '<div class="' + colorClass + ' border rounded-2xl p-4 card-shadow flex items-center gap-3 cursor-pointer btn-press" onclick="app.openProject(\'' + t.project_id + '\')"><div class="w-10 h-10 rounded-xl bg-white dark:bg-slate-900 flex items-center justify-center flex-shrink-0"><i class="fas fa-clock ' + iconColor + ' text-sm"></i></div><div class="flex-1 min-w-0"><p class="font-medium text-sm text-slate-800 dark:text-slate-100 truncate">' + this.escapeHtml(t.title) + '</p><p class="text-xs text-slate-400 dark:text-slate-500">' + this.escapeHtml(t.projectName) + ' &bull; ' + dueText + '</p></div><span class="text-xs font-medium ' + (isUrgent ? 'text-accent-500' : isSoon ? 'text-warning-500' : 'text-slate-400 dark:text-slate-500') + '">' + dueText + '</span></div>';
       }).join('');
     }
 
@@ -261,7 +305,7 @@ const app = {
 
     let projectsHtml = '';
     if (this.projects.length === 0) {
-      projectsHtml = '<div class="bg-white rounded-2xl p-8 text-center card-shadow"><div class="w-16 h-16 bg-primary-50 rounded-full flex items-center justify-center mx-auto mb-3"><i class="fas fa-folder-open text-primary-400 text-xl"></i></div><p class="text-slate-400 text-sm mb-1">No projects yet</p><p class="text-slate-300 text-xs">Tap + to create your first project</p></div>';
+      projectsHtml = '<div class="bg-white dark:bg-slate-800 rounded-2xl p-8 text-center card-shadow"><div class="w-16 h-16 bg-primary-50 dark:bg-primary-900/30 rounded-full flex items-center justify-center mx-auto mb-3"><i class="fas fa-folder-open text-primary-400 text-xl"></i></div><p class="text-slate-400 dark:text-slate-500 text-sm mb-1">No projects yet</p><p class="text-slate-300 dark:text-slate-600 text-xs">Tap + to create your first project</p></div>';
     } else {
       projectsHtml = this.projects.map(p => {
         const tasks = p.tasks || [];
@@ -274,15 +318,45 @@ const app = {
         let memberAvatars = '';
         members.forEach(m => {
           const avatar = m.profiles?.avatar_url || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(m.profiles?.name || '?') + '&background=random';
-          memberAvatars += '<img src="' + avatar + '" class="w-7 h-7 rounded-full border-2 border-white object-cover" alt="">';
+          memberAvatars += '<img src="' + avatar + '" class="w-7 h-7 rounded-full border-2 border-white dark:border-slate-800 object-cover" alt="">';
         });
-        const extraMembers = (p.members || []).length > 3 ? '<div class="w-7 h-7 rounded-full border-2 border-white bg-slate-100 flex items-center justify-center text-[9px] font-bold text-slate-500">+' + ((p.members || []).length - 3) + '</div>' : '';
+        const extraMembers = (p.members || []).length > 3 ? '<div class="w-7 h-7 rounded-full border-2 border-white dark:border-slate-800 bg-slate-100 dark:bg-slate-700 flex items-center justify-center text-[9px] font-bold text-slate-500 dark:text-slate-400">+' + ((p.members || []).length - 3) + '</div>' : '';
 
-        return '<div class="bg-white rounded-2xl p-5 card-shadow cursor-pointer btn-press" onclick="app.openProject(\'' + p.id + '\')"><div class="flex items-start justify-between mb-3"><div><div class="flex items-center gap-2 mb-1"><span class="text-xs font-medium px-2 py-0.5 bg-primary-50 text-primary-600 rounded-md">' + this.escapeHtml(p.subject || 'General') + '</span>' + (daysLeft !== null ? '<span class="text-xs ' + (daysLeft <= 1 ? 'text-accent-500' : daysLeft <= 3 ? 'text-warning-500' : 'text-slate-400') + '">' + (daysLeft <= 0 ? 'Overdue' : daysLeft + ' days left') + '</span>' : '') + '</div><h3 class="font-bold text-slate-800 text-sm">' + this.escapeHtml(p.name) + '</h3></div><div class="w-10 h-10 relative flex-shrink-0"><svg class="w-10 h-10 progress-ring" viewBox="0 0 36 36"><path d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="#e2e8f0" stroke-width="3"/><path d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="' + (progress === 100 ? '#22c55e' : progress > 50 ? '#3b82f6' : '#f59e0b') + '" stroke-width="3" stroke-dasharray="' + progress + ', 100" stroke-linecap="round"/></svg><span class="absolute inset-0 flex items-center justify-center text-[10px] font-bold text-slate-600">' + progress + '%</span></div></div><div class="flex items-center justify-between"><div class="flex -space-x-2">' + memberAvatars + extraMembers + '</div><p class="text-xs text-slate-400">' + done + '/' + total + ' tasks done</p></div></div>';
+        return '<div class="bg-white dark:bg-slate-800 rounded-2xl p-5 card-shadow cursor-pointer btn-press" onclick="app.openProject(\'' + p.id + '\')"><div class="flex items-start justify-between mb-3"><div><div class="flex items-center gap-2 mb-1"><span class="text-xs font-medium px-2 py-0.5 bg-primary-50 dark:bg-primary-900/30 text-primary-600 rounded-md">' + this.escapeHtml(p.subject || 'General') + '</span>' + (daysLeft !== null ? '<span class="text-xs ' + (daysLeft <= 1 ? 'text-accent-500' : daysLeft <= 3 ? 'text-warning-500' : 'text-slate-400 dark:text-slate-500') + '">' + (daysLeft <= 0 ? 'Overdue' : daysLeft + ' days left') + '</span>' : '') + '</div><h3 class="font-bold text-slate-800 dark:text-slate-100 text-sm">' + this.escapeHtml(p.name) + '</h3></div><div class="w-10 h-10 relative flex-shrink-0"><svg class="w-10 h-10 progress-ring" viewBox="0 0 36 36"><path d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="#e2e8f0" stroke-width="3"/><path d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="' + (progress === 100 ? '#22c55e' : progress > 50 ? '#3b82f6' : '#f59e0b') + '" stroke-width="3" stroke-dasharray="' + progress + ', 100" stroke-linecap="round"/></svg><span class="absolute inset-0 flex items-center justify-center text-[10px] font-bold text-slate-600 dark:text-slate-300">' + progress + '%</span></div></div><div class="flex items-center justify-between"><div class="flex -space-x-2">' + memberAvatars + extraMembers + '</div><p class="text-xs text-slate-400 dark:text-slate-500">' + done + '/' + total + ' tasks done</p></div></div>';
       }).join('');
     }
 
     document.getElementById('projectsList').innerHTML = projectsHtml;
+  },
+
+  // ===================== PLAN / LIMITS =====================
+  planLimits(isPro) {
+    return isPro ? PLAN_LIMITS.pro : PLAN_LIMITS.free;
+  },
+
+  projectOwnerIsPro(project) {
+    const owner = (project.members || []).find(m => m.role === 'owner');
+    return !!owner?.profiles?.is_pro;
+  },
+
+  isProjectLeader(project) {
+    return (project.members || []).some(m => m.user_id === this.user.id && m.role === 'owner');
+  },
+
+  projectStorageUsed(project) {
+    return (project.files || []).reduce((sum, f) => sum + (f.size || 0), 0);
+  },
+
+  formatBytes(bytes) {
+    if (bytes >= 1024 * 1024 * 1024) return (bytes / (1024 * 1024 * 1024)).toFixed(1) + 'GB';
+    if (bytes >= 1024 * 1024) return (bytes / (1024 * 1024)).toFixed(0) + 'MB';
+    if (bytes >= 1024) return (bytes / 1024).toFixed(0) + 'KB';
+    return bytes + 'B';
+  },
+
+  promptUpgrade(message) {
+    this.showToast(message, 'error');
+    if (window.stripePayments) stripePayments.showUpgradeModal();
   },
 
   // ===================== PROJECT DETAIL =====================
@@ -294,12 +368,12 @@ const app = {
     document.getElementById('projectDetailView').classList.remove('hidden');
 
     document.getElementById('navHomeIcon').classList.remove('text-primary-600');
-    document.getElementById('navHomeIcon').classList.add('text-slate-400');
+    document.getElementById('navHomeIcon').classList.add('text-slate-400', 'dark:text-slate-500');
     document.getElementById('navHomeText').classList.remove('text-primary-600');
-    document.getElementById('navHomeText').classList.add('text-slate-400');
+    document.getElementById('navHomeText').classList.add('text-slate-400', 'dark:text-slate-500');
 
     this.renderProjectDetail();
-    this.setTaskFilter('all');
+    this.setProjectTab('tasks');
   },
 
   renderProjectDetail() {
@@ -314,10 +388,39 @@ const app = {
     if (p.deadline) {
       const dateStr = new Date(p.deadline).toLocaleDateString('en-MY', { day: 'numeric', month: 'short', year: 'numeric' });
       const daysText = daysLeft !== null ? ' &bull; <span class="' + (daysLeft <= 1 ? 'text-accent-500' : daysLeft <= 3 ? 'text-warning-500' : '') + '">' + (daysLeft <= 0 ? 'Overdue' : daysLeft + ' days left') + '</span>' : '';
-      deadlineText = '<p class="text-xs text-slate-400 mt-1"><i class="far fa-calendar mr-1"></i> Due ' + dateStr + daysText + '</p>';
+      deadlineText = '<p class="text-xs text-slate-400 dark:text-slate-500 mt-1"><i class="far fa-calendar mr-1"></i> Due ' + dateStr + daysText + '</p>';
     }
 
-    document.getElementById('projectHeader').innerHTML = '<div class="flex items-start justify-between mb-3"><div><span class="text-xs font-medium px-2 py-0.5 bg-primary-50 text-primary-600 rounded-md">' + this.escapeHtml(p.subject || 'General') + '</span><h2 class="font-bold text-slate-800 text-lg mt-2">' + this.escapeHtml(p.name) + '</h2>' + deadlineText + '</div></div><div class="flex items-center gap-3"><div class="flex-1 bg-slate-100 rounded-full h-2 overflow-hidden"><div class="h-full rounded-full transition-all duration-500 ' + (progress === 100 ? 'bg-success-500' : progress > 50 ? 'bg-primary-500' : 'bg-warning-500') + '" style="width: ' + progress + '%"></div></div><span class="text-xs font-bold text-slate-600">' + progress + '%</span></div>';
+    document.getElementById('projectHeader').innerHTML = '<div class="flex items-start justify-between mb-3"><div><span class="text-xs font-medium px-2 py-0.5 bg-primary-50 dark:bg-primary-900/30 text-primary-600 rounded-md">' + this.escapeHtml(p.subject || 'General') + '</span><h2 class="font-bold text-slate-800 dark:text-slate-100 text-lg mt-2">' + this.escapeHtml(p.name) + '</h2>' + deadlineText + '</div></div><div class="flex items-center gap-3"><div class="flex-1 bg-slate-100 dark:bg-slate-700 rounded-full h-2 overflow-hidden"><div class="h-full rounded-full transition-all duration-500 ' + (progress === 100 ? 'bg-success-500' : progress > 50 ? 'bg-primary-500' : 'bg-warning-500') + '" style="width: ' + progress + '%"></div></div><span class="text-xs font-bold text-slate-600 dark:text-slate-300">' + progress + '%</span></div>';
+  },
+
+  // ===================== PROJECT TABS =====================
+  setProjectTab(tab) {
+    this.projectTab = tab;
+
+    ['tasks', 'chat', 'files', 'members'].forEach(t => {
+      const btn = document.getElementById('ptab' + t.charAt(0).toUpperCase() + t.slice(1));
+      const panel = document.getElementById('projectPanel' + t.charAt(0).toUpperCase() + t.slice(1));
+      if (t === tab) {
+        btn.classList.add('bg-white', 'dark:bg-slate-700', 'text-slate-800', 'dark:text-slate-100', 'card-shadow');
+        btn.classList.remove('text-slate-400', 'dark:text-slate-500');
+        panel.classList.remove('hidden');
+      } else {
+        btn.classList.remove('bg-white', 'dark:bg-slate-700', 'text-slate-800', 'dark:text-slate-100', 'card-shadow');
+        btn.classList.add('text-slate-400', 'dark:text-slate-500');
+        panel.classList.add('hidden');
+      }
+    });
+
+    if (tab === 'tasks') this.renderTasks();
+    if (tab === 'files') this.renderFiles();
+    if (tab === 'members') this.renderMembers();
+    if (tab === 'chat') {
+      this.loadChatMessages();
+      this.subscribeToChat(this.currentProject.id);
+    } else {
+      this.unsubscribeChat();
+    }
   },
 
   setTaskFilter(filter) {
@@ -327,11 +430,11 @@ const app = {
       const btnId = 'filter' + f.charAt(0).toUpperCase() + f.slice(1).replace('_', '');
       const btn = document.getElementById(btnId);
       if (f === filter) {
-        btn.classList.add('bg-white', 'text-slate-800', 'card-shadow');
-        btn.classList.remove('text-slate-400');
+        btn.classList.add('bg-white', 'dark:bg-slate-700', 'text-slate-800', 'dark:text-slate-100', 'card-shadow');
+        btn.classList.remove('text-slate-400', 'dark:text-slate-500');
       } else {
-        btn.classList.remove('bg-white', 'text-slate-800', 'card-shadow');
-        btn.classList.add('text-slate-400');
+        btn.classList.remove('bg-white', 'dark:bg-slate-700', 'text-slate-800', 'dark:text-slate-100', 'card-shadow');
+        btn.classList.add('text-slate-400', 'dark:text-slate-500');
       }
     });
 
@@ -341,6 +444,10 @@ const app = {
   renderTasks() {
     const p = this.currentProject;
     let tasks = p.tasks || [];
+
+    const isLeader = this.isProjectLeader(p);
+    document.getElementById('addTaskBtn').classList.toggle('hidden', !isLeader);
+    document.getElementById('aiBreakdownBtn').classList.toggle('hidden', !isLeader);
 
     if (this.taskFilter !== 'all') {
       tasks = tasks.filter(t => t.status === this.taskFilter);
@@ -356,7 +463,7 @@ const app = {
 
     let html = '';
     if (tasks.length === 0) {
-      html = '<div class="text-center py-8"><div class="w-12 h-12 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-2"><i class="fas fa-clipboard-check text-slate-300 text-lg"></i></div><p class="text-xs text-slate-400">No tasks here</p></div>';
+      html = '<div class="text-center py-8"><div class="w-12 h-12 bg-slate-50 dark:bg-slate-900 rounded-full flex items-center justify-center mx-auto mb-2"><i class="fas fa-clipboard-check text-slate-300 dark:text-slate-600 text-lg"></i></div><p class="text-xs text-slate-400 dark:text-slate-500">No tasks here</p></div>';
     } else {
       html = tasks.map(t => {
         const assignee = p.members?.find(m => m.user_id === t.assignee)?.profiles;
@@ -368,21 +475,21 @@ const app = {
         if (t.status === 'done') {
           statusBtn = '<button onclick="app.cycleTaskStatus(\'' + t.id + '\')" class="w-6 h-6 rounded-full border-2 flex items-center justify-center flex-shrink-0 mt-0.5 btn-press bg-success-500 border-success-500"><i class="fas fa-check text-white text-[10px]"></i></button>';
         } else if (t.status === 'in_progress') {
-          statusBtn = '<button onclick="app.cycleTaskStatus(\'' + t.id + '\')" class="w-6 h-6 rounded-full border-2 flex items-center justify-center flex-shrink-0 mt-0.5 btn-press border-primary-500 bg-primary-50"><div class="w-2 h-2 bg-primary-500 rounded-full"></div></button>';
+          statusBtn = '<button onclick="app.cycleTaskStatus(\'' + t.id + '\')" class="w-6 h-6 rounded-full border-2 flex items-center justify-center flex-shrink-0 mt-0.5 btn-press border-primary-500 bg-primary-50 dark:bg-primary-900/30"><div class="w-2 h-2 bg-primary-500 rounded-full"></div></button>';
         } else {
-          statusBtn = '<button onclick="app.cycleTaskStatus(\'' + t.id + '\')" class="w-6 h-6 rounded-full border-2 flex items-center justify-center flex-shrink-0 mt-0.5 btn-press border-slate-300"></button>';
+          statusBtn = '<button onclick="app.cycleTaskStatus(\'' + t.id + '\')" class="w-6 h-6 rounded-full border-2 flex items-center justify-center flex-shrink-0 mt-0.5 btn-press border-slate-300 dark:border-slate-600"></button>';
         }
 
-        const titleClass = t.status === 'done' ? 'line-through text-slate-400' : 'text-slate-800';
-        const descHtml = t.description ? '<p class="text-xs text-slate-400 mt-0.5 line-clamp-2">' + this.escapeHtml(t.description) + '</p>' : '';
+        const titleClass = t.status === 'done' ? 'line-through text-slate-400 dark:text-slate-500' : 'text-slate-800 dark:text-slate-100';
+        const descHtml = t.description ? '<p class="text-xs text-slate-400 dark:text-slate-500 mt-0.5 line-clamp-2">' + this.escapeHtml(t.description) + '</p>' : '';
 
-        const assigneeHtml = assignee ? '<div class="flex items-center gap-1"><img src="' + assigneeAvatar + '" class="w-4 h-4 rounded-full object-cover"><span class="text-[10px] text-slate-400">' + this.escapeHtml(assigneeName) + '</span></div>' : '';
+        const assigneeHtml = assignee ? '<div class="flex items-center gap-1"><img src="' + assigneeAvatar + '" class="w-4 h-4 rounded-full object-cover"><span class="text-[10px] text-slate-400 dark:text-slate-500">' + this.escapeHtml(assigneeName) + '</span></div>' : '';
 
-        const dueHtml = t.due_date ? '<span class="text-[10px] ' + (isOverdue ? 'text-accent-500 font-medium' : 'text-slate-400') + '"><i class="far fa-clock mr-0.5"></i>' + new Date(t.due_date).toLocaleDateString('en-MY', { day: 'numeric', month: 'short' }) + '</span>' : '';
+        const dueHtml = t.due_date ? '<span class="text-[10px] ' + (isOverdue ? 'text-accent-500 font-medium' : 'text-slate-400 dark:text-slate-500') + '"><i class="far fa-clock mr-0.5"></i>' + new Date(t.due_date).toLocaleDateString('en-MY', { day: 'numeric', month: 'short' }) + '</span>' : '';
 
-        const priorityClass = t.priority === 'high' ? 'bg-accent-50 text-accent-500' : t.priority === 'medium' ? 'bg-warning-50 text-warning-500' : 'bg-success-50 text-success-500';
+        const priorityClass = t.priority === 'high' ? 'bg-accent-50 dark:bg-accent-500/10 text-accent-500' : t.priority === 'medium' ? 'bg-warning-50 dark:bg-warning-500/10 text-warning-500' : 'bg-success-50 dark:bg-success-500/10 text-success-500';
 
-        return '<div class="bg-white rounded-2xl p-4 card-shadow task-card priority-' + (t.priority || 'medium') + ' ' + (isOverdue ? 'bg-accent-50' : '') + '"><div class="flex items-start gap-3">' + statusBtn + '<div class="flex-1 min-w-0"><p class="font-medium text-sm ' + titleClass + '">' + this.escapeHtml(t.title) + '</p>' + descHtml + '<div class="flex items-center gap-2 mt-2">' + assigneeHtml + dueHtml + '<span class="text-[10px] px-1.5 py-0.5 rounded ' + priorityClass + '">' + t.priority + '</span></div></div><button onclick="app.deleteTask(\'' + t.id + '\')" class="text-slate-300 hover:text-accent-400 btn-press p-1"><i class="fas fa-trash-alt text-xs"></i></button></div></div>';
+        return '<div class="bg-white dark:bg-slate-800 rounded-2xl p-4 card-shadow task-card priority-' + (t.priority || 'medium') + ' ' + (isOverdue ? 'bg-accent-50 dark:bg-accent-500/10' : '') + '"><div class="flex items-start gap-3">' + statusBtn + '<div class="flex-1 min-w-0"><p class="font-medium text-sm ' + titleClass + '">' + this.escapeHtml(t.title) + '</p>' + descHtml + '<div class="flex items-center gap-2 mt-2">' + assigneeHtml + dueHtml + '<span class="text-[10px] px-1.5 py-0.5 rounded ' + priorityClass + '">' + t.priority + '</span></div></div><button onclick="app.deleteTask(\'' + t.id + '\')" class="text-slate-300 dark:text-slate-600 hover:text-accent-400 btn-press p-1"><i class="fas fa-trash-alt text-xs"></i></button></div></div>';
       }).join('');
     }
 
@@ -394,16 +501,25 @@ const app = {
       options += '<option value="' + m.user_id + '">' + this.escapeHtml(m.profiles?.name || 'Unknown') + '</option>';
     });
     assigneeSelect.innerHTML = options;
-
-    this.renderFiles();
-    this.renderMembers();
   },
 
   renderFiles() {
-    const files = this.currentProject.files || [];
+    const p = this.currentProject;
+    const files = p.files || [];
+
+    const isPro = this.projectOwnerIsPro(p);
+    const limits = this.planLimits(isPro);
+    const used = this.projectStorageUsed(p);
+    const pct = Math.min(100, Math.round((used / limits.storageBytes) * 100));
+    const barColor = pct >= 90 ? 'bg-accent-500' : pct >= 70 ? 'bg-warning-500' : 'bg-primary-500';
+
+    document.getElementById('storageUsageBar').innerHTML =
+      '<div class="flex items-center justify-between mb-1"><span class="text-[10px] text-slate-400 dark:text-slate-500 font-medium">' + this.formatBytes(used) + ' of ' + this.formatBytes(limits.storageBytes) + ' used' + (isPro ? ' (Pro)' : '') + '</span></div>' +
+      '<div class="w-full bg-slate-100 dark:bg-slate-700 rounded-full h-1.5 overflow-hidden"><div class="h-full ' + barColor + ' rounded-full transition-all duration-500" style="width:' + pct + '%"></div></div>';
+
     let html = '';
     if (files.length === 0) {
-      html = '<div class="text-center py-4"><p class="text-xs text-slate-400">No files uploaded yet</p></div>';
+      html = '<div class="text-center py-4"><p class="text-xs text-slate-400 dark:text-slate-500">No files uploaded yet</p></div>';
     } else {
       html = files.map(f => {
         let icon = 'fa-file text-slate-400';
@@ -411,7 +527,7 @@ const app = {
         else if (f.name?.match(/\.(jpg|jpeg|png|gif)$/i)) icon = 'fa-file-image text-primary-500';
         else if (f.name?.match(/\.(doc|docx)$/i)) icon = 'fa-file-word text-blue-500';
 
-        return '<a href="' + f.url + '" target="_blank" class="flex items-center gap-3 bg-white rounded-xl p-3 card-shadow btn-press"><div class="w-10 h-10 bg-slate-50 rounded-lg flex items-center justify-center flex-shrink-0"><i class="fas ' + icon + ' text-lg"></i></div><div class="flex-1 min-w-0"><p class="text-sm font-medium text-slate-800 truncate">' + this.escapeHtml(f.name) + '</p><p class="text-[10px] text-slate-400">' + new Date(f.created_at).toLocaleDateString('en-MY') + '</p></div><i class="fas fa-external-link-alt text-slate-300 text-xs"></i></a>';
+        return '<a href="' + f.url + '" target="_blank" class="flex items-center gap-3 bg-white dark:bg-slate-800 rounded-xl p-3 card-shadow btn-press"><div class="w-10 h-10 bg-slate-50 dark:bg-slate-900 rounded-lg flex items-center justify-center flex-shrink-0"><i class="fas ' + icon + ' text-lg"></i></div><div class="flex-1 min-w-0"><p class="text-sm font-medium text-slate-800 dark:text-slate-100 truncate">' + this.escapeHtml(f.name) + '</p><p class="text-[10px] text-slate-400 dark:text-slate-500">' + new Date(f.created_at).toLocaleDateString('en-MY') + '</p></div><i class="fas fa-external-link-alt text-slate-300 dark:text-slate-600 text-xs"></i></a>';
       }).join('');
     }
     document.getElementById('filesList').innerHTML = html;
@@ -421,10 +537,297 @@ const app = {
     const members = this.currentProject.members || [];
     const html = members.map(m => {
       const avatar = m.profiles?.avatar_url || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(m.profiles?.name || '?') + '&background=random&size=24';
-      const roleBadge = m.role === 'owner' ? '<span class="text-[9px] bg-primary-100 text-primary-600 px-1.5 py-0.5 rounded font-medium">Owner</span>' : '';
-      return '<div class="flex items-center gap-2 bg-white rounded-xl px-3 py-2 card-shadow"><img src="' + avatar + '" class="w-6 h-6 rounded-full object-cover" alt=""><span class="text-xs font-medium text-slate-700">' + this.escapeHtml(m.profiles?.name?.split(' ')[0] || '?') + '</span>' + roleBadge + '</div>';
+      const roleBadge = m.role === 'owner' ? '<span class="text-[9px] bg-primary-100 dark:bg-primary-900/30 text-primary-600 px-1.5 py-0.5 rounded font-medium">Leader</span>' : '';
+      return '<div class="flex items-center gap-2 bg-white dark:bg-slate-800 rounded-xl px-3 py-2 card-shadow"><img src="' + avatar + '" class="w-6 h-6 rounded-full object-cover" alt=""><span class="text-xs font-medium text-slate-700 dark:text-slate-300">' + this.escapeHtml(m.profiles?.name?.split(' ')[0] || '?') + '</span>' + roleBadge + '</div>';
     }).join('');
     document.getElementById('membersList').innerHTML = html;
+  },
+
+  // ===================== CHAT =====================
+  async loadChatMessages() {
+    const { data, error } = await supabaseClient
+      .from('chat_messages')
+      .select('*, profiles(name, avatar_url)')
+      .eq('project_id', this.currentProject.id)
+      .order('created_at', { ascending: true });
+
+    if (error) {
+      console.error(error);
+      return;
+    }
+
+    this.chatMessages = data || [];
+    this.renderChatMessages();
+  },
+
+  subscribeToChat(projectId) {
+    if (this.chatChannel) return;
+
+    this.chatChannel = supabaseClient
+      .channel('chat:' + projectId)
+      .on('postgres_changes', {
+        event: 'INSERT',
+        schema: 'public',
+        table: 'chat_messages',
+        filter: 'project_id=eq.' + projectId
+      }, async (payload) => {
+        const sender = (this.currentProject.members || []).find(m => m.user_id === payload.new.user_id)?.profiles;
+        this.chatMessages = this.chatMessages || [];
+        this.chatMessages.push({ ...payload.new, profiles: sender });
+        this.renderChatMessages();
+      })
+      .subscribe();
+  },
+
+  unsubscribeChat() {
+    if (this.chatChannel) {
+      supabaseClient.removeChannel(this.chatChannel);
+      this.chatChannel = null;
+    }
+  },
+
+  renderChatMessages() {
+    const messages = this.chatMessages || [];
+    const container = document.getElementById('chatMessages');
+    if (!container) return;
+
+    if (messages.length === 0) {
+      container.innerHTML = '<div class="text-center py-8"><p class="text-xs text-slate-400 dark:text-slate-500">No messages yet — say hi!</p></div>';
+      return;
+    }
+
+    const GROUP_GAP_MS = 5 * 60 * 1000;
+
+    container.innerHTML = messages.map((m, i) => {
+      const prev = messages[i - 1];
+      const next = messages[i + 1];
+      const isFirstInGroup = !prev || prev.user_id !== m.user_id || (new Date(m.created_at) - new Date(prev.created_at)) > GROUP_GAP_MS;
+      const isLastInGroup = !next || next.user_id !== m.user_id || (new Date(next.created_at) - new Date(m.created_at)) > GROUP_GAP_MS;
+
+      const isMe = m.user_id === this.user.id;
+      const name = m.profiles?.name?.split(' ')[0] || '?';
+      const avatar = m.profiles?.avatar_url || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(name) + '&background=random&size=24';
+      const time = new Date(m.created_at).toLocaleTimeString('en-MY', { hour: 'numeric', minute: '2-digit' });
+
+      let bodyHtml;
+      if (m.sticker_emoji) {
+        bodyHtml = '<span class="text-5xl leading-none">' + m.sticker_emoji + '</span>';
+      } else if (m.sticker_url) {
+        bodyHtml = '<img src="' + m.sticker_url + '" class="w-24 h-24 object-contain">';
+      } else {
+        const bubbleClass = isMe ? 'bg-primary-600 text-white' : 'bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 card-shadow';
+        bodyHtml = '<div class="' + bubbleClass + ' rounded-2xl px-4 py-2.5 text-sm break-words">' + this.escapeHtml(m.content) + '</div>';
+      }
+
+      const nameHtml = (!isMe && isFirstInGroup) ? '<span class="text-[10px] font-medium text-slate-400 dark:text-slate-500 mb-1">' + this.escapeHtml(name) + '</span>' : '';
+      const timeHtml = isLastInGroup ? '<span class="text-[9px] text-slate-300 dark:text-slate-600 mt-0.5">' + time + '</span>' : '';
+      const avatarHtml = !isMe ? (isLastInGroup ? '<img src="' + avatar + '" class="w-6 h-6 rounded-full object-cover flex-shrink-0" alt="">' : '<div class="w-6 flex-shrink-0"></div>') : '';
+      const rowMargin = isFirstInGroup ? (i === 0 ? '' : 'mt-3 ') : 'mt-0.5 ';
+
+      return '<div class="' + rowMargin + 'flex ' + (isMe ? 'justify-end' : 'justify-start') + '">' +
+        '<div class="inline-flex items-end gap-2 max-w-[80%] ' + (isMe ? 'flex-row-reverse' : '') + '">' +
+        avatarHtml +
+        '<div class="flex flex-col min-w-0 ' + (isMe ? 'items-end' : 'items-start') + '">' + nameHtml + bodyHtml + timeHtml + '</div></div></div>';
+    }).join('');
+
+    window.scrollTo({ top: document.body.scrollHeight });
+  },
+
+  async sendChatMessage() {
+    const input = document.getElementById('chatInput');
+    const content = input.value.trim();
+    if (!content) return;
+
+    input.value = '';
+
+    const { error } = await supabaseClient.from('chat_messages').insert({
+      project_id: this.currentProject.id,
+      user_id: this.user.id,
+      content
+    });
+
+    if (error) {
+      this.showToast('Failed to send message', 'error');
+      console.error(error);
+    }
+  },
+
+  async sendSticker(emoji, url) {
+    this.hideStickerPicker();
+
+    const { error } = await supabaseClient.from('chat_messages').insert({
+      project_id: this.currentProject.id,
+      user_id: this.user.id,
+      sticker_emoji: emoji || null,
+      sticker_url: url || null
+    });
+
+    if (error) {
+      this.showToast('Failed to send sticker', 'error');
+      console.error(error);
+    }
+  },
+
+  // ===================== STICKERS =====================
+  showStickerPicker() {
+    document.getElementById('stickerPickerModal').classList.remove('hidden');
+    this.setStickerTab('builtin');
+  },
+
+  hideStickerPicker() {
+    document.getElementById('stickerPickerModal').classList.add('hidden');
+  },
+
+  setStickerTab(tab) {
+    this.stickerTab = tab;
+    const builtinBtn = document.getElementById('stickerTabBuiltin');
+    const yoursBtn = document.getElementById('stickerTabYours');
+    const builtinPanel = document.getElementById('stickerPanelBuiltin');
+    const yoursPanel = document.getElementById('stickerPanelYours');
+
+    if (tab === 'builtin') {
+      builtinBtn.classList.add('bg-white', 'dark:bg-slate-700', 'text-slate-800', 'dark:text-slate-100', 'card-shadow');
+      builtinBtn.classList.remove('text-slate-400', 'dark:text-slate-500');
+      yoursBtn.classList.remove('bg-white', 'dark:bg-slate-700', 'text-slate-800', 'dark:text-slate-100', 'card-shadow');
+      yoursBtn.classList.add('text-slate-400', 'dark:text-slate-500');
+      builtinPanel.classList.remove('hidden');
+      yoursPanel.classList.add('hidden');
+      this.renderBuiltinStickers();
+    } else {
+      yoursBtn.classList.add('bg-white', 'dark:bg-slate-700', 'text-slate-800', 'dark:text-slate-100', 'card-shadow');
+      yoursBtn.classList.remove('text-slate-400', 'dark:text-slate-500');
+      builtinBtn.classList.remove('bg-white', 'dark:bg-slate-700', 'text-slate-800', 'dark:text-slate-100', 'card-shadow');
+      builtinBtn.classList.add('text-slate-400', 'dark:text-slate-500');
+      yoursPanel.classList.remove('hidden');
+      builtinPanel.classList.add('hidden');
+      this.loadProjectStickers();
+    }
+  },
+
+  renderBuiltinStickers() {
+    document.getElementById('stickerPanelBuiltin').innerHTML = BUILTIN_STICKERS.map(emoji =>
+      '<button onclick="app.sendSticker(' + JSON.stringify(emoji).replace(/"/g, '&quot;') + ')" class="sticker-tile aspect-square flex items-center justify-center text-3xl bg-slate-50 dark:bg-slate-900 rounded-xl btn-press">' + emoji + '</button>'
+    ).join('');
+  },
+
+  async loadProjectStickers() {
+    const { data, error } = await supabaseClient
+      .from('project_stickers')
+      .select('*')
+      .eq('project_id', this.currentProject.id)
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.error(error);
+      return;
+    }
+
+    this.currentProject.stickers = data || [];
+    this.renderYourStickers();
+  },
+
+  renderYourStickers() {
+    const stickers = this.currentProject.stickers || [];
+    const uploadTile = '<label class="sticker-tile flex flex-col items-center justify-center gap-1 bg-slate-50 dark:bg-slate-900 border-2 border-dashed border-slate-200 dark:border-slate-700 rounded-xl aspect-square cursor-pointer text-slate-400 dark:text-slate-500" onclick="document.getElementById(\'stickerUpload\').click()"><i class="fas fa-plus text-lg"></i></label>';
+
+    const stickerTiles = stickers.map(s =>
+      '<button onclick="app.sendSticker(null, ' + JSON.stringify(s.url).replace(/"/g, '&quot;') + ')" class="sticker-tile aspect-square bg-slate-50 dark:bg-slate-900 rounded-xl overflow-hidden btn-press"><img src="' + s.url + '" class="w-full h-full object-contain" alt=""></button>'
+    ).join('');
+
+    document.getElementById('stickerPanelYoursGrid').innerHTML = uploadTile + stickerTiles;
+  },
+
+  async handleStickerUpload(input) {
+    const file = input.files[0];
+    if (!file) return;
+
+    if (file.size > 2 * 1024 * 1024) {
+      this.showToast('Stickers must be under 2MB', 'error');
+      input.value = '';
+      return;
+    }
+
+    this.showLoading(true);
+
+    const fileExt = file.name.split('.').pop();
+    const fileName = Date.now() + '_' + Math.random().toString(36).substring(7) + '.' + fileExt;
+    const filePath = this.currentProject.id + '/' + fileName;
+
+    const { error: uploadError } = await supabaseClient.storage
+      .from('project-stickers')
+      .upload(filePath, file);
+
+    if (uploadError) {
+      this.showToast('Sticker upload failed', 'error');
+      this.showLoading(false);
+      input.value = '';
+      return;
+    }
+
+    const { data: { publicUrl } } = supabaseClient.storage
+      .from('project-stickers')
+      .getPublicUrl(filePath);
+
+    const { error } = await supabaseClient.from('project_stickers').insert({
+      project_id: this.currentProject.id,
+      uploaded_by: this.user.id,
+      name: file.name,
+      url: publicUrl,
+      path: filePath
+    });
+
+    if (error) {
+      this.showToast('Failed to save sticker', 'error');
+    } else {
+      await this.loadProjectStickers();
+      this.showToast('Sticker added!', 'success');
+    }
+
+    input.value = '';
+    this.showLoading(false);
+  },
+
+  // ===================== STATS (Pro) =====================
+  showProjectStats() {
+    const p = this.currentProject;
+    const isPro = this.projectOwnerIsPro(p);
+
+    if (!isPro) {
+      this.promptUpgrade('Project Insights — completion rate, overdue tracking, and member activity — is a Pro feature. Upgrade for $5/month.');
+      return;
+    }
+
+    const tasks = p.tasks || [];
+    const total = tasks.length;
+    const done = tasks.filter(t => t.status === 'done').length;
+    const completionRate = total > 0 ? Math.round((done / total) * 100) : 0;
+    const overdue = tasks.filter(t => t.due_date && new Date(t.due_date) < new Date() && t.status !== 'done');
+
+    const memberStats = (p.members || []).map(m => {
+      const memberTasks = tasks.filter(t => t.assignee === m.user_id);
+      const memberDone = memberTasks.filter(t => t.status === 'done').length;
+      return { name: m.profiles?.name || 'Unknown', avatar: m.profiles?.avatar_url, total: memberTasks.length, done: memberDone };
+    }).sort((a, b) => b.done - a.done);
+
+    const memberHtml = memberStats.length ? memberStats.map(m => {
+      const pct = m.total > 0 ? Math.round((m.done / m.total) * 100) : 0;
+      const avatar = m.avatar || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(m.name) + '&background=random&size=24';
+      return '<div class="flex items-center gap-3 mb-3"><img src="' + avatar + '" class="w-7 h-7 rounded-full object-cover flex-shrink-0" alt=""><div class="flex-1 min-w-0"><div class="flex items-center justify-between mb-1"><span class="text-xs font-medium text-slate-700 dark:text-slate-300 truncate">' + this.escapeHtml((m.name || '?').split(' ')[0]) + '</span><span class="text-[10px] text-slate-400 dark:text-slate-500">' + m.done + '/' + m.total + ' done</span></div><div class="w-full bg-slate-100 dark:bg-slate-700 rounded-full h-1.5 overflow-hidden"><div class="h-full bg-primary-500 rounded-full" style="width:' + pct + '%"></div></div></div></div>';
+    }).join('') : '<p class="text-xs text-slate-400 dark:text-slate-500">No members yet</p>';
+
+    document.getElementById('statsContent').innerHTML =
+      '<div class="grid grid-cols-2 gap-3 mb-6">' +
+        '<div class="bg-slate-50 dark:bg-slate-900 rounded-xl p-4"><div class="text-2xl font-bold text-slate-800 dark:text-slate-100">' + completionRate + '%</div><div class="text-[10px] text-slate-400 dark:text-slate-500 font-medium mt-0.5">Completion rate</div></div>' +
+        '<div class="bg-slate-50 dark:bg-slate-900 rounded-xl p-4"><div class="text-2xl font-bold ' + (overdue.length > 0 ? 'text-accent-500' : 'text-slate-800 dark:text-slate-100') + '">' + overdue.length + '</div><div class="text-[10px] text-slate-400 dark:text-slate-500 font-medium mt-0.5">Overdue tasks</div></div>' +
+      '</div>' +
+      '<h3 class="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-3">Member activity</h3>' +
+      memberHtml;
+
+    document.getElementById('statsModal').classList.remove('hidden');
+  },
+
+  hideStats() {
+    document.getElementById('statsModal').classList.add('hidden');
   },
 
   // ===================== CRUD =====================
@@ -446,6 +849,13 @@ const app = {
 
     if (!name) {
       this.showToast('Please enter a project name', 'error');
+      return;
+    }
+
+    const limits = this.planLimits(!!this.userProfile?.is_pro);
+    if (this.projects.length >= limits.projects) {
+      this.hideNewProject();
+      this.promptUpgrade('Free plan is limited to ' + limits.projects + ' projects. Upgrade to Pro for unlimited projects.');
       return;
     }
 
@@ -471,6 +881,10 @@ const app = {
   },
 
   showNewTask() {
+    if (!this.isProjectLeader(this.currentProject)) {
+      this.showToast('Only the project leader can add tasks', 'error');
+      return;
+    }
     document.getElementById('newTaskModal').classList.remove('hidden');
     document.getElementById('newTaskTitle').value = '';
     document.getElementById('newTaskDesc').value = '';
@@ -522,6 +936,116 @@ const app = {
         });
       }
 
+      await this.loadProjects();
+      this.currentProject = this.projects.find(p => p.id === this.currentProject.id);
+      this.renderTasks();
+    }
+
+    this.showLoading(false);
+  },
+
+  // ===================== AI TASK BREAKDOWN (Pro) =====================
+  showAiBreakdown() {
+    if (!this.isProjectLeader(this.currentProject)) {
+      this.showToast('Only the project leader can use AI Breakdown', 'error');
+      return;
+    }
+    if (!this.projectOwnerIsPro(this.currentProject)) {
+      this.hideAiBreakdown();
+      this.promptUpgrade('AI Task Breakdown is a Pro feature. Upgrade for $5/month.');
+      return;
+    }
+    this.resetAiBreakdown();
+    document.getElementById('aiBreakdownModal').classList.remove('hidden');
+  },
+
+  hideAiBreakdown() {
+    document.getElementById('aiBreakdownModal').classList.add('hidden');
+  },
+
+  resetAiBreakdown() {
+    this.aiSuggestions = [];
+    document.getElementById('aiBreakdownBrief').value = '';
+    document.getElementById('aiBreakdownInputStep').classList.remove('hidden');
+    document.getElementById('aiBreakdownResultsStep').classList.add('hidden');
+  },
+
+  async generateAiBreakdown() {
+    const brief = document.getElementById('aiBreakdownBrief').value.trim();
+    if (!brief) {
+      this.showToast('Paste an assignment brief first', 'error');
+      return;
+    }
+
+    const btn = document.getElementById('aiBreakdownGenerateBtn');
+    btn.disabled = true;
+    btn.classList.add('opacity-50', 'pointer-events-none');
+
+    const { data, error } = await supabaseClient.functions.invoke('ai-task-breakdown', {
+      body: { project_id: this.currentProject.id, subject: this.currentProject.subject, brief }
+    });
+
+    btn.disabled = false;
+    btn.classList.remove('opacity-50', 'pointer-events-none');
+
+    if (error || data?.error || !data?.tasks?.length) {
+      this.showToast(data?.error || 'AI Breakdown failed, please try again', 'error');
+      return;
+    }
+
+    this.aiSuggestions = data.tasks.map(t => ({ ...t, selected: true }));
+    this.renderAiSuggestions();
+    document.getElementById('aiBreakdownInputStep').classList.add('hidden');
+    document.getElementById('aiBreakdownResultsStep').classList.remove('hidden');
+  },
+
+  renderAiSuggestions() {
+    const priorityClass = { high: 'bg-accent-50 dark:bg-accent-500/10 text-accent-500', medium: 'bg-warning-50 dark:bg-warning-500/10 text-warning-500', low: 'bg-success-50 dark:bg-success-500/10 text-success-500' };
+
+    document.getElementById('aiBreakdownList').innerHTML = this.aiSuggestions.map((t, i) => {
+      return '<div class="flex items-start gap-3 bg-slate-50 dark:bg-slate-900 rounded-xl p-3">' +
+        '<input type="checkbox" ' + (t.selected ? 'checked' : '') + ' onclick="app.toggleAiSuggestion(' + i + ')" class="mt-1 w-4 h-4 accent-primary-600 flex-shrink-0">' +
+        '<div class="flex-1 min-w-0">' +
+        '<input type="text" value="' + this.escapeHtml(t.title) + '" oninput="app.updateAiSuggestionTitle(' + i + ', this.value)" class="w-full bg-transparent text-sm font-medium text-slate-800 dark:text-slate-100 focus:outline-none">' +
+        '<p class="text-xs text-slate-400 dark:text-slate-500 mt-0.5">' + this.escapeHtml(t.description) + '</p>' +
+        '</div>' +
+        '<span class="text-[10px] px-1.5 py-0.5 rounded flex-shrink-0 ' + (priorityClass[t.priority] || priorityClass.medium) + '">' + t.priority + '</span>' +
+        '</div>';
+    }).join('');
+  },
+
+  toggleAiSuggestion(i) {
+    this.aiSuggestions[i].selected = !this.aiSuggestions[i].selected;
+  },
+
+  updateAiSuggestionTitle(i, value) {
+    this.aiSuggestions[i].title = value;
+  },
+
+  async addSelectedAiTasks() {
+    const selected = this.aiSuggestions.filter(t => t.selected && t.title.trim());
+    if (!selected.length) {
+      this.showToast('Select at least one task', 'error');
+      return;
+    }
+
+    this.showLoading(true);
+
+    const { error } = await supabaseClient.from('tasks').insert(selected.map(t => ({
+      project_id: this.currentProject.id,
+      title: t.title.trim(),
+      description: t.description || null,
+      priority: ['high', 'medium', 'low'].includes(t.priority) ? t.priority : 'medium',
+      status: 'todo',
+      created_by: this.user.id
+    })));
+
+    if (error) {
+      this.showToast('Failed to add tasks', 'error');
+      console.error(error);
+    } else {
+      this.hideAiBreakdown();
+      this.showToast(selected.length + ' task' + (selected.length > 1 ? 's' : '') + ' added!', 'success');
       await this.loadProjects();
       this.currentProject = this.projects.find(p => p.id === this.currentProject.id);
       this.renderTasks();
@@ -588,6 +1112,15 @@ const app = {
     const file = input.files[0];
     if (!file) return;
 
+    const isPro = this.projectOwnerIsPro(this.currentProject);
+    const limits = this.planLimits(isPro);
+    const used = this.projectStorageUsed(this.currentProject);
+    if (used + file.size > limits.storageBytes) {
+      input.value = '';
+      this.promptUpgrade('This project has hit its ' + this.formatBytes(limits.storageBytes) + ' storage limit. Upgrade to Pro for ' + this.formatBytes(PLAN_LIMITS.pro.storageBytes) + ' per project.');
+      return;
+    }
+
     this.showLoading(true);
 
     const fileExt = file.name.split('.').pop();
@@ -613,6 +1146,7 @@ const app = {
       name: file.name,
       url: publicUrl,
       path: filePath,
+      size: file.size,
       uploaded_by: this.user.id
     });
 
@@ -631,8 +1165,21 @@ const app = {
 
   // ===================== INVITE =====================
   showInviteMember() {
-    const link = window.location.origin + '/app?join=' + this.currentProject.id;
+    const p = this.currentProject;
+    const link = window.location.origin + '/app?join=' + p.id;
     document.getElementById('inviteLink').value = link;
+
+    const isPro = this.projectOwnerIsPro(p);
+    const limits = this.planLimits(isPro);
+    const memberCount = (p.members || []).length;
+    const limitText = document.getElementById('memberLimitText');
+    if (isPro) {
+      limitText.textContent = memberCount + ' members · Pro plan (unlimited)';
+    } else {
+      limitText.textContent = memberCount + ' of ' + limits.members + ' members used (Free plan)';
+      limitText.classList.toggle('text-accent-500', memberCount >= limits.members);
+    }
+
     document.getElementById('inviteModal').classList.remove('hidden');
   },
 
@@ -729,7 +1276,7 @@ const app = {
     const list = document.getElementById('notificationsList');
 
     if (!notifications?.length) {
-      list.innerHTML = '<div class="text-center py-8"><div class="w-12 h-12 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-2"><i class="fas fa-bell-slash text-slate-300"></i></div><p class="text-sm text-slate-400">No notifications yet</p></div>';
+      list.innerHTML = '<div class="text-center py-8"><div class="w-12 h-12 bg-slate-50 dark:bg-slate-900 rounded-full flex items-center justify-center mx-auto mb-2"><i class="fas fa-bell-slash text-slate-300 dark:text-slate-600"></i></div><p class="text-sm text-slate-400 dark:text-slate-500">No notifications yet</p></div>';
     } else {
       list.innerHTML = notifications.map(n => {
         const icons = {
@@ -739,11 +1286,11 @@ const app = {
           hourly_reminder: 'fa-clock text-warning-500'
         };
         const iconClass = icons[n.type] || 'fa-bell text-slate-400';
-        const bgClass = n.read ? 'bg-white' : 'bg-primary-50';
-        const iconBg = n.read ? 'bg-slate-50' : 'bg-white';
+        const bgClass = n.read ? 'bg-white dark:bg-slate-800' : 'bg-primary-50 dark:bg-primary-900/20';
+        const iconBg = n.read ? 'bg-slate-50 dark:bg-slate-900' : 'bg-white dark:bg-slate-800';
         const unreadDot = !n.read ? '<div class="w-2 h-2 bg-primary-500 rounded-full flex-shrink-0 mt-1.5"></div>' : '';
 
-        return '<div class="flex items-start gap-3 p-3 rounded-xl ' + bgClass + ' card-shadow"><div class="w-9 h-9 rounded-lg ' + iconBg + ' flex items-center justify-center flex-shrink-0"><i class="fas ' + iconClass + '"></i></div><div class="flex-1 min-w-0"><p class="text-sm font-medium text-slate-800">' + this.escapeHtml(n.title) + '</p><p class="text-xs text-slate-400 mt-0.5">' + this.escapeHtml(n.message) + '</p><p class="text-[10px] text-slate-300 mt-1">' + this.timeAgo(n.created_at) + '</p></div>' + unreadDot + '</div>';
+        return '<div class="flex items-start gap-3 p-3 rounded-xl ' + bgClass + ' card-shadow"><div class="w-9 h-9 rounded-lg ' + iconBg + ' flex items-center justify-center flex-shrink-0"><i class="fas ' + iconClass + '"></i></div><div class="flex-1 min-w-0"><p class="text-sm font-medium text-slate-800 dark:text-slate-100">' + this.escapeHtml(n.title) + '</p><p class="text-xs text-slate-400 dark:text-slate-500 mt-0.5">' + this.escapeHtml(n.message) + '</p><p class="text-[10px] text-slate-300 dark:text-slate-600 mt-1">' + this.timeAgo(n.created_at) + '</p></div>' + unreadDot + '</div>';
       }).join('');
 
       await supabaseClient.from('notifications')
@@ -778,7 +1325,7 @@ const app = {
       btn.disabled = true;
       btn.classList.add('opacity-50', 'pointer-events-none');
     } else {
-      text.textContent = '$3/month, cancel anytime';
+      text.textContent = '$5/month, cancel anytime';
       btn.textContent = 'Upgrade';
       btn.disabled = false;
       btn.classList.remove('opacity-50', 'pointer-events-none');
@@ -794,12 +1341,14 @@ const app = {
   },
 
   showDashboard() {
+    this.unsubscribeChat();
+
     document.getElementById('projectDetailView').classList.add('hidden');
     document.getElementById('dashboardView').classList.remove('hidden');
 
-    document.getElementById('navHomeIcon').classList.remove('text-slate-400');
+    document.getElementById('navHomeIcon').classList.remove('text-slate-400', 'dark:text-slate-500');
     document.getElementById('navHomeIcon').classList.add('text-primary-600');
-    document.getElementById('navHomeText').classList.remove('text-slate-400');
+    document.getElementById('navHomeText').classList.remove('text-slate-400', 'dark:text-slate-500');
     document.getElementById('navHomeText').classList.add('text-primary-600');
 
     this.renderDashboard();
@@ -859,24 +1408,22 @@ async function handleInviteLink() {
       if (app.user) {
         clearInterval(checkAuth);
 
-        const { data: existing } = await supabaseClient
-          .from('project_members')
-          .select('*')
-          .eq('project_id', projectId)
-          .eq('user_id', app.user.id)
-          .single();
+        const { data: result, error } = await supabaseClient.rpc('join_project_with_limit', { p_project_id: projectId });
 
-        if (!existing) {
-          await supabaseClient.from('project_members').insert({
-            project_id: projectId,
-            user_id: app.user.id,
-            role: 'member'
-          });
+        if (error) {
+          app.showToast('Failed to join project', 'error');
+        } else if (result === 'limit_reached') {
+          app.promptUpgrade("This project hit the Free plan's 5-member limit. Ask the owner to upgrade to Pro.");
+        } else if (result === 'joined') {
           app.showToast('You joined the project!', 'success');
         }
 
         await app.loadProjects();
-        app.openProject(projectId);
+        if (app.projects.some(p => p.id === projectId)) {
+          app.openProject(projectId);
+        } else {
+          app.showDashboard();
+        }
 
         window.history.replaceState({}, document.title, window.location.pathname);
       }

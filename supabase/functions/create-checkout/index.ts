@@ -61,10 +61,14 @@ serve(async (req) => {
       customerId = customer.id;
     }
 
-    // Create Checkout Session
+    // Create Checkout Session. Payment method types aren't specified here —
+    // Checkout Sessions (unlike PaymentIntents) automatically offer the
+    // right payment methods based on the Dashboard's payment method
+    // settings, so no automatic_payment_methods param is needed (and it's
+    // not actually a valid Checkout Session field — that one's PaymentIntent
+    // / SetupIntent only).
     const session = await stripe.checkout.sessions.create({
       customer: customerId,
-      payment_method_types: ['card'],
       line_items: [{
         price: price_id,
         quantity: 1,

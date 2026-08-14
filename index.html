@@ -5,20 +5,25 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>ProjectSync — Group Projects Without the WhatsApp Chaos</title>
   <meta name="description" content="ProjectSync is the free way for student groups to organize tasks, deadlines, and files — with reminders in your language and timezone.">
+  <meta property="og:title" content="ProjectSync — Group Projects Without the WhatsApp Chaos">
+  <meta property="og:description" content="Tasks, deadlines, and files — synced across your whole group, with reminders in your language and timezone.">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>📋</text></svg>">
 
   <script src="https://cdn.tailwindcss.com"></script>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 
   <script>
     tailwind.config = {
       theme: {
         extend: {
-          fontFamily: { sans: ['Inter', 'sans-serif'] },
+          fontFamily: {
+            sans: ['Plus Jakarta Sans', 'sans-serif'],
+            display: ['Space Grotesk', 'sans-serif'],
+          },
           colors: {
-            primary: { 50: '#eff6ff', 100: '#dbeafe', 200: '#bfdbfe', 300: '#93c5fd', 400: '#60a5fa', 500: '#3b82f6', 600: '#2563eb', 700: '#1d4ed8', 800: '#1e40af', 900: '#1e3a8a' },
-            accent: { 400: '#f87171', 500: '#ef4444', 600: '#dc2626' },
-            success: { 400: '#4ade80', 500: '#22c55e', 600: '#16a34a' }
+            ink: { 950: '#07080b', 900: '#0c0e14', 800: '#12151e', 700: '#1a1f2c' },
+            accent: { 300: '#8fb3ff', 400: '#6d93f2', 500: '#4d74dd', 600: '#3c5cc4' },
           }
         }
       }
@@ -28,186 +33,305 @@
   <style>
     * { -webkit-tap-highlight-color: transparent; }
     html { scroll-behavior: smooth; }
-    body { font-family: 'Inter', sans-serif; background: #060a14; color: #e2e8f0; overflow-x: hidden; }
+    body {
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      background: #07080b;
+      color: #e4e6ec;
+      overflow-x: hidden;
+    }
+    h1, h2, h3, .font-display { font-family: 'Space Grotesk', sans-serif; }
+
+    :root {
+      --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+      --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
+    }
 
     #hero-canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
     #hero-canvas.hidden-fallback { display: none; }
-    .hero-fallback-bg { position: absolute; inset: 0; background: radial-gradient(circle at 30% 20%, #1d4ed8 0%, #0b1330 45%, #060a14 100%); }
+    .hero-fallback-bg { position: absolute; inset: 0; background: radial-gradient(ellipse at 30% 15%, rgba(77,116,221,0.28) 0%, transparent 55%), #07080b; }
 
-    .reveal { opacity: 0; transform: translateY(40px); }
-    .glass-card { background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); backdrop-filter: blur(8px); }
-    .grid-fade { background: linear-gradient(180deg, transparent 0%, #060a14 100%); }
+    .mesh-orb { position: absolute; border-radius: 999px; filter: blur(90px); pointer-events: none; }
 
-    .step-dot { transition: background-color .3s ease, transform .3s ease; }
-    .step-dot.active { background-color: #3b82f6; transform: scale(1.3); }
+    .reveal { opacity: 0; transform: translateY(28px); filter: blur(6px); }
+
+    /* Grain overlay */
+    .grain { position: fixed; inset: 0; z-index: 60; pointer-events: none; opacity: 0.05; mix-blend-mode: overlay;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"); }
+
+    /* Double-bezel card */
+    .bezel { background: rgba(255,255,255,0.035); border: 1px solid rgba(255,255,255,0.07); border-radius: 2rem; padding: 0.4rem; }
+    .bezel-core {
+      background: linear-gradient(155deg, rgba(255,255,255,0.05), rgba(255,255,255,0.015));
+      border-radius: calc(2rem - 0.375rem);
+      box-shadow: inset 0 1px 1px rgba(255,255,255,0.08);
+      height: 100%;
+    }
+
+    /* Floating nav pill */
+    .nav-pill { background: rgba(12,14,20,0.6); backdrop-filter: blur(20px) saturate(140%); border: 1px solid rgba(255,255,255,0.08); }
+
+    /* Magnetic / pressable buttons */
+    .btn-primary, .btn-ghost {
+      transition: transform 220ms var(--ease-out), background-color 220ms ease, border-color 220ms ease;
+    }
+    .btn-primary:active, .btn-ghost:active { transform: scale(0.97); }
+    .btn-icon-wrap { transition: transform 220ms var(--ease-out); }
+    .btn-primary:hover .btn-icon-wrap { transform: translate(2px, -2px) scale(1.06); }
+
+    .glow-border { position: relative; }
+    .glow-border::before {
+      content: ''; position: absolute; inset: -1px; border-radius: inherit; padding: 1px;
+      background: linear-gradient(140deg, rgba(141,179,255,0.5), rgba(141,179,255,0) 40%);
+      -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+      -webkit-mask-composite: xor; mask-composite: exclude;
+      pointer-events: none;
+    }
+
+    .eyebrow { font-size: 0.65rem; letter-spacing: 0.22em; }
+
+    .step-progress { transition: width 0.1s linear; }
+    .step-num { transition: opacity 300ms var(--ease-out), color 300ms var(--ease-out); }
+    .step-num.active { color: #e4e6ec; opacity: 1; }
+    .step-num:not(.active) { opacity: 0.35; }
 
     @media (prefers-reduced-motion: reduce) {
       html { scroll-behavior: auto; }
     }
 
     ::-webkit-scrollbar { width: 10px; }
-    ::-webkit-scrollbar-track { background: #060a14; }
-    ::-webkit-scrollbar-thumb { background: #1e293b; border-radius: 6px; }
+    ::-webkit-scrollbar-track { background: #07080b; }
+    ::-webkit-scrollbar-thumb { background: #1a1f2c; border-radius: 6px; }
+
+    @media (hover: none) and (pointer: coarse) {
+      .hover-only { display: none; }
+    }
   </style>
 </head>
 <body class="antialiased">
 
+  <div class="grain"></div>
+
   <!-- ================= NAV ================= -->
-  <nav class="fixed top-0 inset-x-0 z-50 flex items-center justify-between px-6 py-4 md:px-12">
-    <div class="flex items-center gap-2 font-bold text-lg tracking-tight text-white">
-      <span>📋</span> ProjectSync
+  <nav class="fixed top-4 md:top-6 inset-x-0 z-50 flex justify-center px-4">
+    <div class="nav-pill flex items-center gap-6 rounded-full pl-5 pr-2 py-2 w-full max-w-xl">
+      <div class="flex items-center gap-2 font-display font-semibold text-[15px] tracking-tight text-white">
+        <span aria-hidden="true">📋</span> ProjectSync
+      </div>
+      <div class="hidden sm:flex items-center gap-5 text-sm text-white/60 mr-auto">
+        <a href="#features" class="hover:text-white transition-colors">Features</a>
+        <a href="#how-it-works" class="hover:text-white transition-colors">How it works</a>
+        <a href="#pricing" class="hover:text-white transition-colors">Pricing</a>
+      </div>
+      <a href="/app" class="btn-primary group flex items-center gap-2 text-sm font-semibold bg-white text-ink-950 pl-4 pr-1.5 py-1.5 rounded-full hover:bg-white/90 ml-auto sm:ml-0">
+        Launch
+        <span class="btn-icon-wrap w-6 h-6 rounded-full bg-ink-950/10 flex items-center justify-center text-xs">→</span>
+      </a>
     </div>
-    <a href="/app" class="text-sm font-semibold bg-white text-slate-900 px-4 py-2 rounded-full hover:bg-primary-100 transition-colors">
-      Launch App
-    </a>
   </nav>
 
   <!-- ================= HERO ================= -->
-  <section id="hero" class="relative h-[100svh] w-full flex items-center overflow-hidden">
+  <section id="hero" class="relative min-h-[100dvh] w-full flex items-center overflow-hidden">
     <div class="hero-fallback-bg"></div>
+    <div class="mesh-orb w-[38rem] h-[38rem] bg-accent-500/20 -top-40 -left-32"></div>
+    <div class="mesh-orb w-[26rem] h-[26rem] bg-accent-400/10 bottom-0 right-0"></div>
     <canvas id="hero-canvas" aria-hidden="true"></canvas>
 
     <div class="relative z-10 max-w-3xl mx-auto px-6 text-center" id="hero-content">
-      <p class="reveal inline-block text-xs font-semibold tracking-widest uppercase text-primary-300 bg-primary-500/10 border border-primary-400/20 rounded-full px-4 py-1.5 mb-6">
+      <p class="reveal eyebrow inline-block font-semibold uppercase text-accent-300 bg-accent-500/10 border border-accent-400/20 rounded-full px-4 py-1.5 mb-7">
         Free forever · No credit card
       </p>
-      <h1 class="reveal text-4xl md:text-6xl font-extrabold tracking-tight text-white leading-tight mb-6">
+      <h1 class="reveal font-display text-[2.75rem] leading-[1.05] md:text-[4.5rem] md:leading-[1.02] font-semibold tracking-tight text-white mb-6 text-balance">
         Group projects,<br class="hidden md:block"> without the WhatsApp chaos.
       </h1>
-      <p class="reveal text-lg text-slate-300 mb-10 max-w-xl mx-auto">
+      <p class="reveal text-lg text-white/55 mb-10 max-w-xl mx-auto leading-relaxed">
         Tasks, deadlines, and files — synced across your whole group, with reminders in your language and timezone.
       </p>
       <div class="reveal flex flex-col sm:flex-row gap-3 justify-center">
-        <a href="/app" class="bg-primary-600 hover:bg-primary-500 text-white font-semibold px-7 py-3.5 rounded-full transition-colors">
-          Get Started Free
+        <a href="/app" class="btn-primary group flex items-center justify-center gap-2 bg-white hover:bg-white/90 text-ink-950 font-semibold pl-7 pr-2 py-2 rounded-full">
+          Get started free
+          <span class="btn-icon-wrap w-9 h-9 rounded-full bg-ink-950/10 flex items-center justify-center text-sm">→</span>
         </a>
-        <a href="#how-it-works" class="border border-white/20 hover:bg-white/5 text-white font-semibold px-7 py-3.5 rounded-full transition-colors">
+        <a href="#how-it-works" class="btn-ghost border border-white/15 hover:bg-white/5 hover:border-white/25 text-white font-semibold px-7 py-3.5 rounded-full">
           See how it works
         </a>
       </div>
     </div>
 
-    <div class="absolute bottom-8 inset-x-0 flex justify-center text-slate-400 text-xs tracking-widest uppercase animate-bounce">
+    <div class="absolute bottom-8 inset-x-0 flex justify-center text-white/30 eyebrow uppercase animate-bounce">
       Scroll
     </div>
   </section>
 
-  <!-- ================= FEATURES ================= -->
-  <section id="features" class="relative bg-[#060a14] px-6 md:px-12 py-28 grid-fade">
+  <!-- ================= FEATURES (Bento) ================= -->
+  <section id="features" class="relative bg-ink-950 px-6 md:px-12 py-28 md:py-40">
     <div class="max-w-6xl mx-auto">
-      <h2 class="reveal text-3xl md:text-4xl font-bold text-white text-center mb-4">Built for how students actually work</h2>
-      <p class="reveal text-slate-400 text-center max-w-xl mx-auto mb-16">No setup calls, no admin overhead — just add your group and go.</p>
+      <p class="reveal eyebrow font-semibold uppercase text-accent-300 mb-4">What you get</p>
+      <h2 class="reveal font-display text-3xl md:text-5xl font-semibold text-white mb-4 max-w-2xl text-balance">Built for how students actually work</h2>
+      <p class="reveal text-white/50 max-w-lg mb-16 leading-relaxed">No setup calls, no admin overhead — just add your group and go.</p>
 
-      <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
-        <div class="reveal feature-card glass-card rounded-2xl p-6">
-          <div class="text-2xl mb-4">🌍</div>
-          <h3 class="font-semibold text-white mb-2">6 languages, 4 education levels</h3>
-          <p class="text-sm text-slate-400">English, Bahasa Melayu, 中文, Español, 日本語, 한국어 — built for students everywhere, not just one country.</p>
+      <div class="grid grid-cols-1 md:grid-cols-12 gap-5">
+
+        <div class="reveal bezel md:col-span-7">
+          <div class="bezel-core p-8 flex flex-col justify-between min-h-[220px]">
+            <div class="text-3xl mb-6" aria-hidden="true">🌍</div>
+            <div>
+              <h3 class="font-display font-semibold text-white text-xl mb-2">6 languages, 4 education levels</h3>
+              <p class="text-sm text-white/50 leading-relaxed max-w-sm">English, Bahasa Melayu, 中文, Español, 日本語, 한국어 — built for students everywhere, not just one country.</p>
+            </div>
+          </div>
         </div>
-        <div class="reveal feature-card glass-card rounded-2xl p-6">
-          <div class="text-2xl mb-4">⏰</div>
-          <h3 class="font-semibold text-white mb-2">Reminders that respect your timezone</h3>
-          <p class="text-sm text-slate-400">Auto-detected timezone and preferred hours, so nudges land when you're actually awake.</p>
+
+        <div class="reveal bezel md:col-span-5">
+          <div class="bezel-core p-8 flex flex-col justify-between min-h-[220px]">
+            <div class="text-3xl mb-6" aria-hidden="true">⏰</div>
+            <div>
+              <h3 class="font-display font-semibold text-white text-xl mb-2">Timezone-aware reminders</h3>
+              <p class="text-sm text-white/50 leading-relaxed">Auto-detected timezone and preferred hours, so nudges land when you're actually awake.</p>
+            </div>
+          </div>
         </div>
-        <div class="reveal feature-card glass-card rounded-2xl p-6">
-          <div class="text-2xl mb-4">💬</div>
-          <h3 class="font-semibold text-white mb-2">Telegram check-ins</h3>
-          <p class="text-sm text-slate-400">Link your Telegram and get hourly nudges on what's due, translated into your language.</p>
+
+        <div class="reveal bezel md:col-span-4">
+          <div class="bezel-core p-8 flex flex-col justify-between min-h-[200px]">
+            <div class="text-3xl mb-6" aria-hidden="true">💬</div>
+            <div>
+              <h3 class="font-display font-semibold text-white text-lg mb-2">Telegram check-ins</h3>
+              <p class="text-sm text-white/50 leading-relaxed">Hourly nudges on what's due, translated into your language.</p>
+            </div>
+          </div>
         </div>
-        <div class="reveal feature-card glass-card rounded-2xl p-6">
-          <div class="text-2xl mb-4">✅</div>
-          <h3 class="font-semibold text-white mb-2">Shared tasks &amp; deadlines</h3>
-          <p class="text-sm text-slate-400">One board per project. Assign, track status, and never lose a deadline in a group chat again.</p>
+
+        <div class="reveal bezel md:col-span-4">
+          <div class="bezel-core p-8 flex flex-col justify-between min-h-[200px]">
+            <div class="text-3xl mb-6" aria-hidden="true">✅</div>
+            <div>
+              <h3 class="font-display font-semibold text-white text-lg mb-2">Shared tasks &amp; deadlines</h3>
+              <p class="text-sm text-white/50 leading-relaxed">One board per project. Assign, track status, never lose a deadline in a group chat.</p>
+            </div>
+          </div>
         </div>
-        <div class="reveal feature-card glass-card rounded-2xl p-6">
-          <div class="text-2xl mb-4">📎</div>
-          <h3 class="font-semibold text-white mb-2">Files, in one place</h3>
-          <p class="text-sm text-slate-400">Drafts, slides, and research — attached to the task they belong to, not buried in a chat thread.</p>
+
+        <div class="reveal bezel md:col-span-4">
+          <div class="bezel-core p-8 flex flex-col justify-between min-h-[200px]">
+            <div class="text-3xl mb-6" aria-hidden="true">📎</div>
+            <div>
+              <h3 class="font-display font-semibold text-white text-lg mb-2">Files, in one place</h3>
+              <p class="text-sm text-white/50 leading-relaxed">Drafts, slides, and research — attached to the task they belong to.</p>
+            </div>
+          </div>
         </div>
-        <div class="reveal feature-card glass-card rounded-2xl p-6">
-          <div class="text-2xl mb-4">📱</div>
-          <h3 class="font-semibold text-white mb-2">Mobile-first</h3>
-          <p class="text-sm text-slate-400">Works cleanly on any phone — because that's where most group project chaos actually happens.</p>
+
+        <div class="reveal bezel md:col-span-12">
+          <div class="bezel-core p-8 flex flex-col sm:flex-row items-start sm:items-center gap-6 justify-between">
+            <div class="flex items-center gap-5">
+              <div class="text-3xl" aria-hidden="true">📱</div>
+              <div>
+                <h3 class="font-display font-semibold text-white text-lg mb-1">Mobile-first, always</h3>
+                <p class="text-sm text-white/50 leading-relaxed max-w-md">Works cleanly on any phone — because that's where most group project chaos actually happens.</p>
+              </div>
+            </div>
+            <a href="/app" class="hover-only shrink-0 flex items-center gap-2 text-sm font-semibold text-accent-300 hover:text-accent-200 transition-colors">
+              Try it now <span aria-hidden="true">→</span>
+            </a>
+          </div>
         </div>
+
       </div>
     </div>
   </section>
 
-  <!-- ================= HOW IT WORKS (pinned) ================= -->
-  <section id="how-it-works" class="relative bg-[#060a14] h-[300vh]">
-    <div class="sticky top-0 h-[100svh] flex flex-col items-center justify-center px-6 overflow-hidden">
-      <p class="text-xs font-semibold tracking-widest uppercase text-primary-300 mb-6">How it works</p>
+  <!-- ================= HOW IT WORKS (pinned, 3D cascade) ================= -->
+  <section id="how-it-works" class="relative bg-ink-950 h-[320vh]">
+    <div class="sticky top-0 h-[100dvh] flex flex-col items-center justify-center px-6 overflow-hidden" style="perspective: 1200px;">
+      <p class="eyebrow font-semibold uppercase text-accent-300 mb-8">How it works</p>
 
-      <div class="relative w-full max-w-2xl h-64 flex items-center justify-center">
-        <div class="how-step absolute inset-0 flex flex-col items-center justify-center text-center" data-step="0">
-          <div class="text-5xl mb-6">🚀</div>
-          <h3 class="text-2xl md:text-3xl font-bold text-white mb-3">1. Create a project</h3>
-          <p class="text-slate-400 max-w-md">Name it, pick a deadline. Takes about ten seconds.</p>
+      <div class="relative w-full max-w-2xl h-72 flex items-center justify-center" style="transform-style: preserve-3d;">
+        <div class="how-step bezel absolute inset-0 flex items-center justify-center" data-step="0">
+          <div class="bezel-core w-full h-full flex flex-col items-center justify-center text-center px-8">
+            <div class="text-5xl mb-6" aria-hidden="true">🚀</div>
+            <h3 class="font-display text-2xl md:text-3xl font-semibold text-white mb-3">Create a project</h3>
+            <p class="text-white/50 max-w-md leading-relaxed">Name it, pick a deadline. Takes about ten seconds.</p>
+          </div>
         </div>
-        <div class="how-step absolute inset-0 flex flex-col items-center justify-center text-center" data-step="1">
-          <div class="text-5xl mb-6">🔗</div>
-          <h3 class="text-2xl md:text-3xl font-bold text-white mb-3">2. Invite your group</h3>
-          <p class="text-slate-400 max-w-md">Share one link. Everyone lands straight in the project, no account juggling.</p>
+        <div class="how-step bezel absolute inset-0 flex items-center justify-center" data-step="1">
+          <div class="bezel-core w-full h-full flex flex-col items-center justify-center text-center px-8">
+            <div class="text-5xl mb-6" aria-hidden="true">🔗</div>
+            <h3 class="font-display text-2xl md:text-3xl font-semibold text-white mb-3">Invite your group</h3>
+            <p class="text-white/50 max-w-md leading-relaxed">Share one link. Everyone lands straight in the project, no account juggling.</p>
+          </div>
         </div>
-        <div class="how-step absolute inset-0 flex flex-col items-center justify-center text-center" data-step="2">
-          <div class="text-5xl mb-6">🔔</div>
-          <h3 class="text-2xl md:text-3xl font-bold text-white mb-3">3. Get reminded, automatically</h3>
-          <p class="text-slate-400 max-w-md">Telegram nudges keep everyone honest about what's due and when.</p>
+        <div class="how-step bezel absolute inset-0 flex items-center justify-center" data-step="2">
+          <div class="bezel-core w-full h-full flex flex-col items-center justify-center text-center px-8">
+            <div class="text-5xl mb-6" aria-hidden="true">🔔</div>
+            <h3 class="font-display text-2xl md:text-3xl font-semibold text-white mb-3">Get reminded, automatically</h3>
+            <p class="text-white/50 max-w-md leading-relaxed">Telegram nudges keep everyone honest about what's due and when.</p>
+          </div>
         </div>
       </div>
 
-      <div class="flex gap-3 mt-10">
-        <span class="step-dot w-2.5 h-2.5 rounded-full bg-white/20" data-dot="0"></span>
-        <span class="step-dot w-2.5 h-2.5 rounded-full bg-white/20" data-dot="1"></span>
-        <span class="step-dot w-2.5 h-2.5 rounded-full bg-white/20" data-dot="2"></span>
+      <div class="flex items-center gap-4 mt-12">
+        <span class="step-num font-display text-sm active" data-dot="0">01 Create</span>
+        <span class="w-8 h-px bg-white/15"></span>
+        <span class="step-num font-display text-sm" data-dot="1">02 Invite</span>
+        <span class="w-8 h-px bg-white/15"></span>
+        <span class="step-num font-display text-sm" data-dot="2">03 Remind</span>
+      </div>
+      <div class="w-40 h-[2px] bg-white/10 rounded-full mt-5 overflow-hidden">
+        <div id="how-progress" class="step-progress h-full bg-accent-400 rounded-full" style="width: 0%"></div>
       </div>
     </div>
   </section>
 
   <!-- ================= PRICING ================= -->
-  <section id="pricing" class="relative bg-[#060a14] px-6 md:px-12 py-28">
+  <section id="pricing" class="relative bg-ink-950 px-6 md:px-12 py-28 md:py-40">
     <div class="max-w-4xl mx-auto">
-      <h2 class="reveal text-3xl md:text-4xl font-bold text-white text-center mb-4">Simple pricing</h2>
-      <p class="reveal text-slate-400 text-center max-w-xl mx-auto mb-16">Start free. Upgrade later if your group needs more.</p>
+      <p class="reveal eyebrow font-semibold uppercase text-accent-300 mb-4 text-center">Pricing</p>
+      <h2 class="reveal font-display text-3xl md:text-5xl font-semibold text-white text-center mb-4 text-balance">Simple, honest pricing</h2>
+      <p class="reveal text-white/50 text-center max-w-xl mx-auto mb-16 leading-relaxed">Start free. Upgrade later if your group needs more.</p>
 
       <div class="grid md:grid-cols-2 gap-6">
-        <div class="reveal glass-card rounded-2xl p-8">
-          <h3 class="text-lg font-semibold text-white mb-1">Free</h3>
-          <p class="text-4xl font-extrabold text-white mb-6">$0<span class="text-base font-medium text-slate-400">/mo</span></p>
-          <ul class="space-y-3 text-sm text-slate-300 mb-8">
-            <li class="flex gap-2"><span class="text-success-400">✓</span> Unlimited projects &amp; tasks</li>
-            <li class="flex gap-2"><span class="text-success-400">✓</span> Group invites</li>
-            <li class="flex gap-2"><span class="text-success-400">✓</span> Telegram reminders</li>
-            <li class="flex gap-2"><span class="text-success-400">✓</span> 6 languages</li>
-          </ul>
-          <a href="/app" class="block text-center border border-white/20 hover:bg-white/5 text-white font-semibold px-6 py-3 rounded-full transition-colors">
-            Get Started Free
-          </a>
+        <div class="reveal bezel">
+          <div class="bezel-core p-8 h-full flex flex-col">
+            <h3 class="font-display text-lg font-semibold text-white mb-1">Free</h3>
+            <p class="font-display text-4xl font-semibold text-white mb-6">$0<span class="text-base font-normal text-white/40">/mo</span></p>
+            <ul class="space-y-3 text-sm text-white/60 mb-8 flex-1">
+              <li class="flex gap-2"><span class="text-accent-300">✓</span> Up to 5 projects</li>
+              <li class="flex gap-2"><span class="text-accent-300">✓</span> Up to 8 members per project</li>
+              <li class="flex gap-2"><span class="text-accent-300">✓</span> 1GB file storage per project</li>
+              <li class="flex gap-2"><span class="text-accent-300">✓</span> Telegram reminders, 6 languages</li>
+            </ul>
+            <a href="/app" class="btn-ghost block text-center border border-white/15 hover:bg-white/5 hover:border-white/25 text-white font-semibold px-6 py-3 rounded-full">
+              Get started free
+            </a>
+          </div>
         </div>
 
-        <div class="reveal glass-card rounded-2xl p-8 relative border-primary-400/40">
-          <span class="absolute -top-3 right-6 bg-primary-600 text-white text-xs font-semibold px-3 py-1 rounded-full">Pro</span>
-          <h3 class="text-lg font-semibold text-white mb-1">Pro</h3>
-          <p class="text-4xl font-extrabold text-white mb-6">$3<span class="text-base font-medium text-slate-400">/mo</span></p>
-          <ul class="space-y-3 text-sm text-slate-300 mb-8">
-            <li class="flex gap-2"><span class="text-success-400">✓</span> Everything in Free</li>
-            <li class="flex gap-2"><span class="text-success-400">✓</span> More file storage per project</li>
-            <li class="flex gap-2"><span class="text-success-400">✓</span> Priority reminder delivery</li>
-            <li class="flex gap-2"><span class="text-success-400">✓</span> Support the project 💙</li>
-          </ul>
-          <a href="/app" class="block text-center bg-primary-600 hover:bg-primary-500 text-white font-semibold px-6 py-3 rounded-full transition-colors">
-            Sign Up &amp; Upgrade
-          </a>
+        <div class="reveal bezel glow-border relative">
+          <span class="absolute -top-3 right-7 bg-white text-ink-950 text-xs font-semibold px-3 py-1 rounded-full z-10">Pro</span>
+          <div class="bezel-core p-8 h-full flex flex-col">
+            <h3 class="font-display text-lg font-semibold text-white mb-1">Pro</h3>
+            <p class="font-display text-4xl font-semibold text-white mb-6">$5<span class="text-base font-normal text-white/40">/mo</span></p>
+            <ul class="space-y-3 text-sm text-white/60 mb-8 flex-1">
+              <li class="flex gap-2"><span class="text-accent-300">✓</span> Unlimited projects</li>
+              <li class="flex gap-2"><span class="text-accent-300">✓</span> Unlimited members per project</li>
+              <li class="flex gap-2"><span class="text-accent-300">✓</span> 5GB file storage per project</li>
+              <li class="flex gap-2"><span class="text-accent-300">✓</span> Project Insights — completion rate, overdue tracking, member activity</li>
+              <li class="flex gap-2"><span class="text-accent-300">✓</span> Support the project 💙</li>
+            </ul>
+            <a href="/app" class="btn-primary block text-center bg-white hover:bg-white/90 text-ink-950 font-semibold px-6 py-3 rounded-full">
+              Sign up &amp; upgrade
+            </a>
+          </div>
         </div>
       </div>
-      <p class="text-xs text-slate-500 text-center mt-8">Pro upgrades happen inside the app once you're signed in — checkout runs securely through Stripe.</p>
+      <p class="text-xs text-white/30 text-center mt-8">Pro upgrades happen inside the app once you're signed in — checkout runs securely through Stripe.</p>
     </div>
   </section>
 
   <!-- ================= FOOTER ================= -->
-  <footer class="border-t border-white/10 px-6 md:px-12 py-10 text-center text-sm text-slate-500">
+  <footer class="border-t border-white/10 px-6 md:px-12 py-10 text-center text-sm text-white/40">
     <p>Built with 💙 by a student, for students worldwide.</p>
-    <p class="mt-2"><a href="/app" class="text-primary-400 hover:underline">Launch ProjectSync →</a></p>
+    <p class="mt-2"><a href="/app" class="text-accent-300 hover:underline">Launch ProjectSync →</a></p>
   </footer>
 
   <script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>

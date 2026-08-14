@@ -37,11 +37,11 @@ function initHeroScene() {
   const camera = new THREE.PerspectiveCamera(50, heroSection.clientWidth / heroSection.clientHeight, 0.1, 100);
   camera.position.set(0, 0, 9);
 
-  scene.add(new THREE.AmbientLight(0x8899ff, 0.6));
-  const keyLight = new THREE.DirectionalLight(0x3b82f6, 1.4);
+  scene.add(new THREE.AmbientLight(0x8fa4e0, 0.55));
+  const keyLight = new THREE.DirectionalLight(0x6d93f2, 1.5);
   keyLight.position.set(4, 5, 6);
   scene.add(keyLight);
-  const rimLight = new THREE.DirectionalLight(0xf87171, 0.5);
+  const rimLight = new THREE.DirectionalLight(0xffffff, 0.35);
   rimLight.position.set(-6, -3, -4);
   scene.add(rimLight);
 
@@ -60,7 +60,7 @@ function initHeroScene() {
   for (let i = 0; i < shapeCount; i++) {
     const geo = geometries[i % geometries.length];
     const material = new THREE.MeshStandardMaterial({
-      color: i % 3 === 0 ? 0x3b82f6 : (i % 3 === 1 ? 0x1e293b : 0x60a5fa),
+      color: i % 3 === 0 ? 0x4d74dd : (i % 3 === 1 ? 0x1a1f2c : 0x8fb3ff),
       roughness: 0.35,
       metalness: 0.15,
       flatShading: true,
@@ -100,6 +100,7 @@ function initHeroScene() {
   }, { passive: true });
 
   let scrollFade = 1;
+  let scrollDepth = 0;
   if (window.gsap && window.ScrollTrigger) {
     gsap.to({}, {
       scrollTrigger: {
@@ -107,7 +108,10 @@ function initHeroScene() {
         start: 'top top',
         end: 'bottom top',
         scrub: true,
-        onUpdate: (self) => { scrollFade = 1 - self.progress; }
+        onUpdate: (self) => {
+          scrollFade = 1 - self.progress;
+          scrollDepth = self.progress;
+        }
       }
     });
   }
@@ -131,6 +135,8 @@ function initHeroScene() {
         mesh.rotation.y += mesh.userData.spin * 1.4;
         mesh.position.y = mesh.userData.baseY + Math.sin(elapsed * mesh.userData.floatSpeed + mesh.userData.floatOffset) * 0.25;
       });
+
+      camera.position.z = 9 - scrollDepth * 1.5;
     } else {
       group.rotation.y = targetRotation.y * 0.15;
     }
@@ -163,40 +169,59 @@ function initScrollAnimations() {
   if (typeof gsap === 'undefined') return;
   gsap.registerPlugin(ScrollTrigger);
 
-  const duration = prefersReducedMotion ? 0.01 : 0.8;
+  const EASE_OUT = 'cubic-bezier(0.23, 1, 0.32, 1)';
+  const duration = prefersReducedMotion ? 0.01 : 0.9;
 
   // Hero entrance
   gsap.to('#hero-content .reveal', {
     opacity: 1,
     y: 0,
+    filter: 'blur(0px)',
     duration,
     stagger: prefersReducedMotion ? 0 : 0.12,
-    ease: 'power3.out',
+    ease: EASE_OUT,
     delay: 0.15,
   });
 
-  // Generic reveal-on-scroll for section headers, feature cards, pricing cards
+  // Generic reveal-on-scroll for section headers, bento cards, pricing cards
   gsap.utils.toArray('#features .reveal, #pricing .reveal').forEach((el, i) => {
     gsap.to(el, {
       opacity: 1,
       y: 0,
+      filter: 'blur(0px)',
       duration,
-      ease: 'power2.out',
+      ease: EASE_OUT,
       scrollTrigger: {
         trigger: el,
-        start: 'top 85%',
+        start: 'top 88%',
         toggleActions: 'play none none reverse',
       },
       delay: prefersReducedMotion ? 0 : (i % 3) * 0.08,
     });
   });
 
-  // Pinned "how it works" steps
+  // Mesh orb parallax
+  gsap.utils.toArray('.mesh-orb').forEach((orb, i) => {
+    gsap.to(orb, {
+      y: prefersReducedMotion ? 0 : (i % 2 === 0 ? 120 : -80),
+      ease: 'none',
+      scrollTrigger: {
+        trigger: '#hero',
+        start: 'top top',
+        end: 'bottom top',
+        scrub: true,
+      },
+    });
+  });
+
+  // Pinned "how it works" steps — 3D depth cascade
   const steps = gsap.utils.toArray('.how-step');
-  const dots = gsap.utils.toArray('.step-dot');
+  const nums = gsap.utils.toArray('.step-num');
+  const progressBar = document.getElementById('how-progress');
+
   if (steps.length) {
-    gsap.set(steps.slice(1), { opacity: 0, y: 30 });
-    if (dots[0]) dots[0].classList.add('active');
+    gsap.set(steps.slice(1), { opacity: 0, y: 40, rotationX: prefersReducedMotion ? 0 : -12, scale: 0.92, filter: 'blur(8px)', transformOrigin: '50% 100%' });
+    gsap.set(steps[0], { opacity: 1, y: 0, rotationX: 0, scale: 1, filter: 'blur(0px)' });
 
     const tl = gsap.timeline({
       scrollTrigger: {
@@ -205,21 +230,52 @@ function initScrollAnimations() {
         end: 'bottom bottom',
         scrub: prefersReducedMotion ? false : 1,
         onUpdate: (self) => {
+          if (progressBar) progressBar.style.width = `${self.progress * 100}%`;
           const stepIndex = Math.min(steps.length - 1, Math.floor(self.progress * steps.length));
-          dots.forEach((d, i) => d.classList.toggle('active', i === stepIndex));
+          nums.forEach((n, i) => n.classList.toggle('active', i === stepIndex));
         }
       }
     });
 
     steps.forEach((step, i) => {
       if (i === 0) return;
-      tl.to(steps[i - 1], { opacity: 0, y: -30, duration: 0.5 }, `step${i}`)
-        .to(step, { opacity: 1, y: 0, duration: 0.5 }, `step${i}`);
+      tl.to(steps[i - 1], {
+        opacity: 0, y: -40, rotationX: prefersReducedMotion ? 0 : 12, scale: 0.92, filter: 'blur(8px)',
+        duration: 0.5, ease: 'power2.inOut',
+      }, `step${i}`)
+        .to(step, {
+          opacity: 1, y: 0, rotationX: 0, scale: 1, filter: 'blur(0px)',
+          duration: 0.5, ease: 'power2.out',
+        }, `step${i}`);
     });
   }
+}
+
+// ===================== MAGNETIC BUTTONS =====================
+function initMagneticButtons() {
+  if (prefersReducedMotion || isMobile) return;
+  const buttons = document.querySelectorAll('.btn-primary, .btn-ghost');
+
+  buttons.forEach((btn) => {
+    let raf = null;
+    btn.addEventListener('mousemove', (e) => {
+      const rect = btn.getBoundingClientRect();
+      const relX = e.clientX - rect.left - rect.width / 2;
+      const relY = e.clientY - rect.top - rect.height / 2;
+      if (raf) cancelAnimationFrame(raf);
+      raf = requestAnimationFrame(() => {
+        btn.style.transform = `translate(${relX * 0.12}px, ${relY * 0.28}px)`;
+      });
+    });
+    btn.addEventListener('mouseleave', () => {
+      if (raf) cancelAnimationFrame(raf);
+      btn.style.transform = '';
+    });
+  });
 }
 
 document.addEventListener('DOMContentLoaded', () => {
   initHeroScene();
   initScrollAnimations();
+  initMagneticButtons();
 });

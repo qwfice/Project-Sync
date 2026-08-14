@@ -7,6 +7,17 @@
   <meta name="description" content="The simplest way for students to organize group projects. No more WhatsApp chaos.">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>📋</text></svg>">
 
+  <script>
+    // Applied before Tailwind/CSS loads so there's no flash of the wrong theme.
+    (function() {
+      try {
+        var stored = localStorage.getItem('theme') || 'system';
+        var isDark = stored === 'dark' || (stored === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+        document.documentElement.classList.toggle('dark', isDark);
+      } catch (e) {}
+    })();
+  </script>
+
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
@@ -14,6 +25,7 @@
 
   <script>
     tailwind.config = {
+      darkMode: 'class',
       theme: {
         extend: {
           fontFamily: { sans: ['Inter', 'sans-serif'] },
@@ -58,9 +70,22 @@
     .edu-high { background: #dcfce7; color: #166534; }
     .edu-uni { background: #fef3c7; color: #92400e; }
     .edu-self { background: #f3e8ff; color: #6b21a8; }
+    .dark .glass { background: rgba(15, 23, 42, 0.85); }
+    .dark .modal-overlay { background: rgba(0,0,0,0.7); }
+    .dark .card-shadow { box-shadow: 0 1px 3px rgba(0,0,0,0.4), 0 4px 12px rgba(0,0,0,0.3), 0 0 0 1px rgba(255,255,255,0.04); }
+    .dark .status-todo { background: #334155; color: #cbd5e1; }
+    .dark .status-progress { background: #1e3a5f; color: #60a5fa; }
+    .dark .status-done { background: #14532d; color: #4ade80; }
+    .dark .edu-middle { background: #1e3a5f; color: #93c5fd; }
+    .dark .edu-high { background: #14532d; color: #86efac; }
+    .dark .edu-uni { background: #78350f; color: #fcd34d; }
+    .dark .edu-self { background: #4c1d95; color: #d8b4fe; }
+    .theme-btn.active { background: #2563eb; color: white; }
+    .sticker-tile { transition: transform 0.15s ease; }
+    .sticker-tile:active { transform: scale(0.9); }
   </style>
 </head>
-<body class="bg-slate-50 text-slate-800 min-h-screen">
+<body class="bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100 min-h-screen transition-colors">
 
   <!-- ================= AUTH SCREEN ================= -->
   <div id="authScreen" class="fixed inset-0 z-50 bg-gradient-to-br from-primary-600 via-primary-700 to-primary-900 flex flex-col items-center justify-center p-6">
@@ -117,26 +142,26 @@
   <!-- ================= EMAIL AUTH MODAL ================= -->
   <div id="emailAuthModal" class="fixed inset-0 z-[60] hidden">
     <div class="modal-overlay absolute inset-0" onclick="app.hideEmailAuth()"></div>
-    <div class="absolute bottom-0 left-0 right-0 bg-white rounded-t-3xl p-6 slide-up max-h-[85vh] overflow-y-auto">
-      <div class="w-12 h-1.5 bg-slate-200 rounded-full mx-auto mb-6"></div>
-      <h2 class="text-xl font-bold text-slate-800 mb-1" id="emailAuthTitle">Sign In</h2>
-      <p class="text-slate-400 text-sm mb-6" data-i18n="auth.emailSubtitle">Enter your email to continue</p>
+    <div class="absolute bottom-0 left-0 right-0 bg-white dark:bg-slate-800 rounded-t-3xl p-6 slide-up max-h-[85vh] overflow-y-auto">
+      <div class="w-12 h-1.5 bg-slate-200 dark:bg-slate-700 rounded-full mx-auto mb-6"></div>
+      <h2 class="text-xl font-bold text-slate-800 dark:text-slate-100 mb-1" id="emailAuthTitle">Sign In</h2>
+      <p class="text-slate-400 dark:text-slate-500 text-sm mb-6" data-i18n="auth.emailSubtitle">Enter your email to continue</p>
 
       <div class="space-y-4">
         <div>
-          <label class="text-xs font-medium text-slate-500 uppercase tracking-wider" data-i18n="label.email">Email</label>
-          <input type="email" id="authEmail" placeholder="you@school.edu" class="w-full mt-1.5 bg-slate-50 border border-slate-200 rounded-xl px-4 py-3.5 text-sm focus:border-primary-500 focus:ring-2 focus:ring-primary-100 transition-all">
+          <label class="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider" data-i18n="label.email">Email</label>
+          <input type="email" id="authEmail" placeholder="you@school.edu" class="w-full mt-1.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3.5 text-sm focus:border-primary-500 focus:ring-2 focus:ring-primary-100 transition-all">
         </div>
         <div>
-          <label class="text-xs font-medium text-slate-500 uppercase tracking-wider" data-i18n="label.password">Password</label>
-          <input type="password" id="authPassword" placeholder="Min 6 characters" class="w-full mt-1.5 bg-slate-50 border border-slate-200 rounded-xl px-4 py-3.5 text-sm focus:border-primary-500 focus:ring-2 focus:ring-primary-100 transition-all">
+          <label class="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider" data-i18n="label.password">Password</label>
+          <input type="password" id="authPassword" placeholder="Min 6 characters" class="w-full mt-1.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3.5 text-sm focus:border-primary-500 focus:ring-2 focus:ring-primary-100 transition-all">
         </div>
         <button onclick="app.handleEmailAuth()" class="w-full bg-primary-600 text-white font-semibold py-3.5 rounded-xl btn-press">
           <span id="emailAuthBtnText">Sign In</span>
         </button>
       </div>
 
-      <p class="text-center text-sm text-slate-400 mt-4">
+      <p class="text-center text-sm text-slate-400 dark:text-slate-500 mt-4">
         <span id="emailAuthToggleText">Don't have an account?</span>
         <button onclick="app.toggleEmailAuthMode()" class="text-primary-600 font-medium ml-1" id="emailAuthToggleBtn">Sign Up</button>
       </p>
@@ -147,23 +172,23 @@
   <div id="mainApp" class="hidden">
 
     <!-- Header -->
-    <header class="glass sticky top-0 z-40 border-b border-slate-100">
+    <header class="glass sticky top-0 z-40 border-b border-slate-100 dark:border-slate-800">
       <div class="max-w-lg mx-auto px-4 py-3 flex items-center justify-between">
         <div class="flex items-center gap-3">
           <div class="w-9 h-9 bg-primary-600 rounded-xl flex items-center justify-center">
             <i class="fas fa-layer-group text-white text-sm"></i>
           </div>
           <div>
-            <h1 class="font-bold text-slate-800 text-sm leading-tight">ProjectSync</h1>
-            <p class="text-[10px] text-slate-400" id="headerGreeting">Hey there!</p>
+            <h1 class="font-bold text-slate-800 dark:text-slate-100 text-sm leading-tight">ProjectSync</h1>
+            <p class="text-[10px] text-slate-400 dark:text-slate-500" id="headerGreeting">Hey there!</p>
           </div>
         </div>
         <div class="flex items-center gap-2">
           <!-- Language quick switch -->
-          <button onclick="app.showLanguagePicker()" class="w-9 h-9 rounded-xl bg-slate-50 flex items-center justify-center btn-press text-xs font-bold text-slate-500" id="langIndicator">EN</button>
+          <button onclick="app.showLanguagePicker()" class="w-9 h-9 rounded-xl bg-slate-50 dark:bg-slate-800 flex items-center justify-center btn-press text-xs font-bold text-slate-500 dark:text-slate-400" id="langIndicator">EN</button>
 
-          <button onclick="app.showNotifications()" class="relative w-9 h-9 rounded-xl bg-slate-50 flex items-center justify-center btn-press">
-            <i class="fas fa-bell text-slate-500 text-sm"></i>
+          <button onclick="app.showNotifications()" class="relative w-9 h-9 rounded-xl bg-slate-50 dark:bg-slate-800 flex items-center justify-center btn-press">
+            <i class="fas fa-bell text-slate-500 dark:text-slate-400 text-sm"></i>
             <span id="notifBadge" class="absolute -top-0.5 -right-0.5 w-4 h-4 bg-accent-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center hidden">3</span>
           </button>
           <button onclick="app.showProfile()" class="w-9 h-9 rounded-xl overflow-hidden btn-press">
@@ -189,17 +214,17 @@
 
         <!-- Stats Row -->
         <div class="grid grid-cols-3 gap-3 mb-5">
-          <div class="bg-white rounded-2xl p-3 card-shadow">
-            <div class="text-2xl font-bold text-slate-800" id="statTotal">0</div>
-            <div class="text-[10px] text-slate-400 font-medium" data-i18n="stats.projects">Projects</div>
+          <div class="bg-white dark:bg-slate-800 rounded-2xl p-3 card-shadow">
+            <div class="text-2xl font-bold text-slate-800 dark:text-slate-100" id="statTotal">0</div>
+            <div class="text-[10px] text-slate-400 dark:text-slate-500 font-medium" data-i18n="stats.projects">Projects</div>
           </div>
-          <div class="bg-white rounded-2xl p-3 card-shadow">
+          <div class="bg-white dark:bg-slate-800 rounded-2xl p-3 card-shadow">
             <div class="text-2xl font-bold text-warning-500" id="statPending">0</div>
-            <div class="text-[10px] text-slate-400 font-medium" data-i18n="stats.pending">Pending</div>
+            <div class="text-[10px] text-slate-400 dark:text-slate-500 font-medium" data-i18n="stats.pending">Pending</div>
           </div>
-          <div class="bg-white rounded-2xl p-3 card-shadow">
+          <div class="bg-white dark:bg-slate-800 rounded-2xl p-3 card-shadow">
             <div class="text-2xl font-bold text-success-500" id="statDone">0</div>
-            <div class="text-[10px] text-slate-400 font-medium" data-i18n="stats.done">Done</div>
+            <div class="text-[10px] text-slate-400 dark:text-slate-500 font-medium" data-i18n="stats.done">Done</div>
           </div>
         </div>
 
@@ -221,7 +246,7 @@
         <!-- Upcoming Deadlines -->
         <div class="mb-5">
           <div class="flex items-center justify-between mb-3">
-            <h2 class="font-bold text-slate-800 text-sm" data-i18n="section.deadlines">⏰ Upcoming Deadlines</h2>
+            <h2 class="font-bold text-slate-800 dark:text-slate-100 text-sm" data-i18n="section.deadlines">⏰ Upcoming Deadlines</h2>
             <button onclick="app.showAllDeadlines()" class="text-primary-600 text-xs font-medium" data-i18n="action.seeAll">See all</button>
           </div>
           <div id="deadlinesList" class="space-y-2"></div>
@@ -230,7 +255,7 @@
         <!-- My Projects -->
         <div>
           <div class="flex items-center justify-between mb-3">
-            <h2 class="font-bold text-slate-800 text-sm" data-i18n="section.projects">📋 My Projects</h2>
+            <h2 class="font-bold text-slate-800 dark:text-slate-100 text-sm" data-i18n="section.projects">📋 My Projects</h2>
             <button onclick="app.showNewProject()" class="w-7 h-7 bg-primary-600 rounded-lg flex items-center justify-center btn-press">
               <i class="fas fa-plus text-white text-xs"></i>
             </button>
@@ -241,48 +266,79 @@
 
       <!-- PROJECT DETAIL VIEW -->
       <div id="projectDetailView" class="hidden fade-in">
-        <button onclick="app.showDashboard()" class="flex items-center gap-2 text-slate-400 text-sm mb-4 btn-press">
-          <i class="fas fa-chevron-left text-xs"></i> <span data-i18n="action.back">Back</span>
-        </button>
+        <div class="flex items-center justify-between mb-4">
+          <button onclick="app.showDashboard()" class="flex items-center gap-2 text-slate-400 dark:text-slate-500 text-sm btn-press">
+            <i class="fas fa-chevron-left text-xs"></i> <span data-i18n="action.back">Back</span>
+          </button>
+          <button onclick="app.showProjectStats()" class="flex items-center gap-1.5 text-xs font-medium text-primary-600 bg-primary-50 dark:bg-primary-900/30 px-3 py-1.5 rounded-full btn-press">
+            <i class="fas fa-chart-simple text-[10px]"></i> <span data-i18n="action.stats">Insights</span>
+          </button>
+        </div>
 
-        <div class="bg-white rounded-2xl p-5 card-shadow mb-4" id="projectHeader"></div>
+        <div class="bg-white dark:bg-slate-800 rounded-2xl p-5 card-shadow mb-4" id="projectHeader"></div>
 
-        <!-- Task Board -->
-        <div class="mb-4">
+        <!-- Section Tabs -->
+        <div class="flex gap-1.5 mb-4 bg-slate-100 dark:bg-slate-800 p-1 rounded-xl">
+          <button onclick="app.setProjectTab('tasks')" id="ptabTasks" class="flex-1 py-2 text-xs font-medium rounded-lg bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-100 card-shadow transition-all" data-i18n="section.tasks">Tasks</button>
+          <button onclick="app.setProjectTab('chat')" id="ptabChat" class="flex-1 py-2 text-xs font-medium rounded-lg text-slate-400 dark:text-slate-500 transition-all" data-i18n="section.chat">Chat</button>
+          <button onclick="app.setProjectTab('files')" id="ptabFiles" class="flex-1 py-2 text-xs font-medium rounded-lg text-slate-400 dark:text-slate-500 transition-all" data-i18n="section.files">Files</button>
+          <button onclick="app.setProjectTab('members')" id="ptabMembers" class="flex-1 py-2 text-xs font-medium rounded-lg text-slate-400 dark:text-slate-500 transition-all" data-i18n="section.members">Members</button>
+        </div>
+
+        <!-- Tasks Panel -->
+        <div id="projectPanelTasks">
           <div class="flex items-center justify-between mb-3">
-            <h2 class="font-bold text-slate-800 text-sm" data-i18n="section.tasks">Tasks</h2>
-            <button onclick="app.showNewTask()" class="text-primary-600 text-xs font-medium flex items-center gap-1 btn-press">
-              <i class="fas fa-plus text-[10px]"></i> <span data-i18n="action.addTask">Add Task</span>
-            </button>
+            <h2 class="font-bold text-slate-800 dark:text-slate-100 text-sm" data-i18n="section.taskBoard">Task Board</h2>
+            <div class="flex items-center gap-3">
+              <button onclick="app.showAiBreakdown()" id="aiBreakdownBtn" class="hidden text-primary-600 text-xs font-medium flex items-center gap-1 btn-press">
+                <i class="fas fa-wand-magic-sparkles text-[10px]"></i> <span data-i18n="action.aiBreakdown">AI Breakdown</span>
+              </button>
+              <button onclick="app.showNewTask()" id="addTaskBtn" class="hidden text-primary-600 text-xs font-medium flex items-center gap-1 btn-press">
+                <i class="fas fa-plus text-[10px]"></i> <span data-i18n="action.addTask">Add Task</span>
+              </button>
+            </div>
           </div>
 
           <!-- Status Tabs -->
-          <div class="flex gap-1.5 mb-3 bg-slate-100 p-1 rounded-xl">
-            <button onclick="app.setTaskFilter('all')" id="filterAll" class="flex-1 py-2 text-xs font-medium rounded-lg bg-white text-slate-800 card-shadow transition-all" data-i18n="filter.all">All</button>
-            <button onclick="app.setTaskFilter('todo')" id="filterTodo" class="flex-1 py-2 text-xs font-medium rounded-lg text-slate-400 transition-all" data-i18n="filter.todo">To Do</button>
-            <button onclick="app.setTaskFilter('in_progress')" id="filterProgress" class="flex-1 py-2 text-xs font-medium rounded-lg text-slate-400 transition-all" data-i18n="filter.doing">Doing</button>
-            <button onclick="app.setTaskFilter('done')" id="filterDone" class="flex-1 py-2 text-xs font-medium rounded-lg text-slate-400 transition-all" data-i18n="filter.done">Done</button>
+          <div class="flex gap-1.5 mb-3 bg-slate-100 dark:bg-slate-800 p-1 rounded-xl">
+            <button onclick="app.setTaskFilter('all')" id="filterAll" class="flex-1 py-2 text-xs font-medium rounded-lg bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-100 card-shadow transition-all" data-i18n="filter.all">All</button>
+            <button onclick="app.setTaskFilter('todo')" id="filterTodo" class="flex-1 py-2 text-xs font-medium rounded-lg text-slate-400 dark:text-slate-500 transition-all" data-i18n="filter.todo">To Do</button>
+            <button onclick="app.setTaskFilter('in_progress')" id="filterProgress" class="flex-1 py-2 text-xs font-medium rounded-lg text-slate-400 dark:text-slate-500 transition-all" data-i18n="filter.doing">Doing</button>
+            <button onclick="app.setTaskFilter('done')" id="filterDone" class="flex-1 py-2 text-xs font-medium rounded-lg text-slate-400 dark:text-slate-500 transition-all" data-i18n="filter.done">Done</button>
           </div>
 
           <div id="tasksList" class="space-y-2"></div>
         </div>
 
-        <!-- Files -->
-        <div class="mb-4">
+        <!-- Chat Panel -->
+        <div id="projectPanelChat" class="hidden">
+          <div id="chatMessages" class="pb-3 min-h-[200px]"></div>
+          <div class="sticky bottom-20 flex items-center gap-2 bg-white/95 dark:bg-slate-900/95 backdrop-blur-sm p-2 rounded-2xl card-shadow border border-slate-100 dark:border-slate-800">
+            <button onclick="app.showStickerPicker()" class="w-10 h-10 rounded-xl bg-slate-50 dark:bg-slate-800 flex items-center justify-center btn-press text-lg flex-shrink-0">😊</button>
+            <input type="text" id="chatInput" placeholder="Message..." class="flex-1 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-sm focus:border-primary-500 focus:ring-2 focus:ring-primary-100 transition-all" onkeydown="if(event.key==='Enter') app.sendChatMessage()">
+            <button onclick="app.sendChatMessage()" class="w-10 h-10 rounded-xl bg-primary-600 flex items-center justify-center btn-press flex-shrink-0">
+              <i class="fas fa-paper-plane text-white text-sm"></i>
+            </button>
+          </div>
+        </div>
+
+        <!-- Files Panel -->
+        <div id="projectPanelFiles" class="hidden">
           <div class="flex items-center justify-between mb-3">
-            <h2 class="font-bold text-slate-800 text-sm" data-i18n="section.files">📎 Files</h2>
+            <h2 class="font-bold text-slate-800 dark:text-slate-100 text-sm" data-i18n="section.files">📎 Files</h2>
             <label class="text-primary-600 text-xs font-medium flex items-center gap-1 btn-press cursor-pointer">
               <i class="fas fa-cloud-upload-alt text-[10px]"></i> <span data-i18n="action.upload">Upload</span>
               <input type="file" id="fileUpload" class="hidden" onchange="app.handleFileUpload(this)">
             </label>
           </div>
+          <div id="storageUsageBar" class="mb-3"></div>
           <div id="filesList" class="space-y-2"></div>
         </div>
 
-        <!-- Members -->
-        <div>
+        <!-- Members Panel -->
+        <div id="projectPanelMembers" class="hidden">
           <div class="flex items-center justify-between mb-3">
-            <h2 class="font-bold text-slate-800 text-sm" data-i18n="section.members">👥 Members</h2>
+            <h2 class="font-bold text-slate-800 dark:text-slate-100 text-sm" data-i18n="section.members">👥 Members</h2>
             <button onclick="app.showInviteMember()" class="text-primary-600 text-xs font-medium flex items-center gap-1 btn-press">
               <i class="fas fa-user-plus text-[10px]"></i> <span data-i18n="action.invite">Invite</span>
             </button>
@@ -293,7 +349,7 @@
     </main>
 
     <!-- Bottom Nav -->
-    <nav class="fixed bottom-0 left-0 right-0 glass border-t border-slate-100 z-40">
+    <nav class="fixed bottom-0 left-0 right-0 glass border-t border-slate-100 dark:border-slate-800 z-40">
       <div class="max-w-lg mx-auto flex items-center justify-around py-2 px-6">
         <button onclick="app.showDashboard()" class="flex flex-col items-center gap-0.5 py-1 px-4 btn-press" id="navHome">
           <i class="fas fa-home text-lg text-primary-600" id="navHomeIcon"></i>
@@ -303,8 +359,8 @@
           <i class="fas fa-plus text-white text-lg"></i>
         </button>
         <button onclick="app.showSettings()" class="flex flex-col items-center gap-0.5 py-1 px-4 btn-press" id="navSettings">
-          <i class="fas fa-cog text-lg text-slate-400" id="navSettingsIcon"></i>
-          <span class="text-[9px] font-medium text-slate-400" id="navSettingsText" data-i18n="nav.settings">Settings</span>
+          <i class="fas fa-cog text-lg text-slate-400 dark:text-slate-500" id="navSettingsIcon"></i>
+          <span class="text-[9px] font-medium text-slate-400 dark:text-slate-500" id="navSettingsText" data-i18n="nav.settings">Settings</span>
         </button>
       </div>
     </nav>
@@ -313,18 +369,18 @@
   <!-- ================= NEW PROJECT MODAL ================= -->
   <div id="newProjectModal" class="fixed inset-0 z-[60] hidden">
     <div class="modal-overlay absolute inset-0" onclick="app.hideNewProject()"></div>
-    <div class="absolute bottom-0 left-0 right-0 bg-white rounded-t-3xl p-6 slide-up">
-      <div class="w-12 h-1.5 bg-slate-200 rounded-full mx-auto mb-6"></div>
-      <h2 class="text-xl font-bold text-slate-800 mb-6" data-i18n="modal.newProject">New Project</h2>
+    <div class="absolute bottom-0 left-0 right-0 bg-white dark:bg-slate-800 rounded-t-3xl p-6 slide-up">
+      <div class="w-12 h-1.5 bg-slate-200 dark:bg-slate-700 rounded-full mx-auto mb-6"></div>
+      <h2 class="text-xl font-bold text-slate-800 dark:text-slate-100 mb-6" data-i18n="modal.newProject">New Project</h2>
 
       <div class="space-y-4">
         <div>
-          <label class="text-xs font-medium text-slate-500 uppercase tracking-wider" data-i18n="label.projectName">Project Name</label>
-          <input type="text" id="newProjName" placeholder="e.g. Biology Presentation" class="w-full mt-1.5 bg-slate-50 border border-slate-200 rounded-xl px-4 py-3.5 text-sm focus:border-primary-500 focus:ring-2 focus:ring-primary-100 transition-all">
+          <label class="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider" data-i18n="label.projectName">Project Name</label>
+          <input type="text" id="newProjName" placeholder="e.g. Biology Presentation" class="w-full mt-1.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3.5 text-sm focus:border-primary-500 focus:ring-2 focus:ring-primary-100 transition-all">
         </div>
         <div>
-          <label class="text-xs font-medium text-slate-500 uppercase tracking-wider" data-i18n="label.subject">Subject</label>
-          <select id="newProjSubject" class="w-full mt-1.5 bg-slate-50 border border-slate-200 rounded-xl px-4 py-3.5 text-sm focus:border-primary-500 focus:ring-2 focus:ring-primary-100 transition-all appearance-none">
+          <label class="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider" data-i18n="label.subject">Subject</label>
+          <select id="newProjSubject" class="w-full mt-1.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3.5 text-sm focus:border-primary-500 focus:ring-2 focus:ring-primary-100 transition-all appearance-none">
             <option value="" data-i18n="placeholder.selectSubject">Select subject...</option>
             <option value="Science">Science</option>
             <option value="Mathematics">Mathematics</option>
@@ -344,8 +400,8 @@
           </select>
         </div>
         <div>
-          <label class="text-xs font-medium text-slate-500 uppercase tracking-wider" data-i18n="label.deadline">Deadline</label>
-          <input type="date" id="newProjDeadline" class="w-full mt-1.5 bg-slate-50 border border-slate-200 rounded-xl px-4 py-3.5 text-sm focus:border-primary-500 focus:ring-2 focus:ring-primary-100 transition-all">
+          <label class="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider" data-i18n="label.deadline">Deadline</label>
+          <input type="date" id="newProjDeadline" class="w-full mt-1.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3.5 text-sm focus:border-primary-500 focus:ring-2 focus:ring-primary-100 transition-all">
         </div>
         <button onclick="app.createProject()" class="w-full bg-primary-600 text-white font-semibold py-3.5 rounded-xl btn-press mt-2" data-i18n="action.createProject">Create Project</button>
       </div>
@@ -355,29 +411,29 @@
   <!-- ================= NEW TASK MODAL ================= -->
   <div id="newTaskModal" class="fixed inset-0 z-[60] hidden">
     <div class="modal-overlay absolute inset-0" onclick="app.hideNewTask()"></div>
-    <div class="absolute bottom-0 left-0 right-0 bg-white rounded-t-3xl p-6 slide-up">
-      <div class="w-12 h-1.5 bg-slate-200 rounded-full mx-auto mb-6"></div>
-      <h2 class="text-xl font-bold text-slate-800 mb-6" data-i18n="modal.newTask">New Task</h2>
+    <div class="absolute bottom-0 left-0 right-0 bg-white dark:bg-slate-800 rounded-t-3xl p-6 slide-up">
+      <div class="w-12 h-1.5 bg-slate-200 dark:bg-slate-700 rounded-full mx-auto mb-6"></div>
+      <h2 class="text-xl font-bold text-slate-800 dark:text-slate-100 mb-6" data-i18n="modal.newTask">New Task</h2>
 
       <div class="space-y-4">
         <div>
-          <label class="text-xs font-medium text-slate-500 uppercase tracking-wider" data-i18n="label.taskTitle">Task Title</label>
-          <input type="text" id="newTaskTitle" placeholder="e.g. Research photosynthesis" class="w-full mt-1.5 bg-slate-50 border border-slate-200 rounded-xl px-4 py-3.5 text-sm focus:border-primary-500 focus:ring-2 focus:ring-primary-100 transition-all">
+          <label class="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider" data-i18n="label.taskTitle">Task Title</label>
+          <input type="text" id="newTaskTitle" placeholder="e.g. Research photosynthesis" class="w-full mt-1.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3.5 text-sm focus:border-primary-500 focus:ring-2 focus:ring-primary-100 transition-all">
         </div>
         <div>
-          <label class="text-xs font-medium text-slate-500 uppercase tracking-wider" data-i18n="label.description">Description</label>
-          <textarea id="newTaskDesc" placeholder="Add details..." rows="3" class="w-full mt-1.5 bg-slate-50 border border-slate-200 rounded-xl px-4 py-3.5 text-sm focus:border-primary-500 focus:ring-2 focus:ring-primary-100 transition-all resize-none"></textarea>
+          <label class="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider" data-i18n="label.description">Description</label>
+          <textarea id="newTaskDesc" placeholder="Add details..." rows="3" class="w-full mt-1.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3.5 text-sm focus:border-primary-500 focus:ring-2 focus:ring-primary-100 transition-all resize-none"></textarea>
         </div>
         <div class="grid grid-cols-2 gap-3">
           <div>
-            <label class="text-xs font-medium text-slate-500 uppercase tracking-wider" data-i18n="label.assignTo">Assign To</label>
-            <select id="newTaskAssignee" class="w-full mt-1.5 bg-slate-50 border border-slate-200 rounded-xl px-4 py-3.5 text-sm focus:border-primary-500 focus:ring-2 focus:ring-primary-100 transition-all appearance-none">
+            <label class="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider" data-i18n="label.assignTo">Assign To</label>
+            <select id="newTaskAssignee" class="w-full mt-1.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3.5 text-sm focus:border-primary-500 focus:ring-2 focus:ring-primary-100 transition-all appearance-none">
               <option value="" data-i18n="placeholder.selectMember">Select member...</option>
             </select>
           </div>
           <div>
-            <label class="text-xs font-medium text-slate-500 uppercase tracking-wider" data-i18n="label.priority">Priority</label>
-            <select id="newTaskPriority" class="w-full mt-1.5 bg-slate-50 border border-slate-200 rounded-xl px-4 py-3.5 text-sm focus:border-primary-500 focus:ring-2 focus:ring-primary-100 transition-all appearance-none">
+            <label class="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider" data-i18n="label.priority">Priority</label>
+            <select id="newTaskPriority" class="w-full mt-1.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3.5 text-sm focus:border-primary-500 focus:ring-2 focus:ring-primary-100 transition-all appearance-none">
               <option value="low" data-i18n="priority.low">Low</option>
               <option value="medium" selected data-i18n="priority.medium">Medium</option>
               <option value="high" data-i18n="priority.high">High</option>
@@ -385,10 +441,39 @@
           </div>
         </div>
         <div>
-          <label class="text-xs font-medium text-slate-500 uppercase tracking-wider" data-i18n="label.dueDate">Due Date</label>
-          <input type="date" id="newTaskDue" class="w-full mt-1.5 bg-slate-50 border border-slate-200 rounded-xl px-4 py-3.5 text-sm focus:border-primary-500 focus:ring-2 focus:ring-primary-100 transition-all">
+          <label class="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider" data-i18n="label.dueDate">Due Date</label>
+          <input type="date" id="newTaskDue" class="w-full mt-1.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3.5 text-sm focus:border-primary-500 focus:ring-2 focus:ring-primary-100 transition-all">
         </div>
         <button onclick="app.createTask()" class="w-full bg-primary-600 text-white font-semibold py-3.5 rounded-xl btn-press mt-2" data-i18n="action.addTaskBtn">Add Task</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= AI TASK BREAKDOWN MODAL ================= -->
+  <div id="aiBreakdownModal" class="fixed inset-0 z-[60] hidden">
+    <div class="modal-overlay absolute inset-0" onclick="app.hideAiBreakdown()"></div>
+    <div class="absolute bottom-0 left-0 right-0 bg-white dark:bg-slate-800 rounded-t-3xl p-6 slide-up max-h-[85vh] overflow-y-auto">
+      <div class="w-12 h-1.5 bg-slate-200 dark:bg-slate-700 rounded-full mx-auto mb-6"></div>
+      <div class="flex items-center gap-3 mb-2">
+        <div class="w-9 h-9 bg-primary-100 dark:bg-primary-900/30 rounded-lg flex items-center justify-center">
+          <i class="fas fa-wand-magic-sparkles text-primary-600 text-sm"></i>
+        </div>
+        <h2 class="text-xl font-bold text-slate-800 dark:text-slate-100 flex-1" data-i18n="modal.aiBreakdown">AI Task Breakdown</h2>
+        <span class="text-[9px] font-bold uppercase tracking-wider bg-primary-600 text-white px-2 py-1 rounded-full">Pro</span>
+      </div>
+      <p class="text-slate-400 dark:text-slate-500 text-sm mb-4" data-i18n="modal.aiBreakdownSubtitle">Paste your assignment brief and get a starter task list</p>
+
+      <div id="aiBreakdownInputStep">
+        <textarea id="aiBreakdownBrief" placeholder="Paste the assignment brief or rubric here..." rows="6" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3.5 text-sm focus:border-primary-500 focus:ring-2 focus:ring-primary-100 transition-all resize-none"></textarea>
+        <button onclick="app.generateAiBreakdown()" id="aiBreakdownGenerateBtn" class="w-full bg-primary-600 text-white font-semibold py-3.5 rounded-xl btn-press mt-4 flex items-center justify-center gap-2">
+          <i class="fas fa-wand-magic-sparkles"></i> <span data-i18n="action.generateTasks">Generate Tasks</span>
+        </button>
+      </div>
+
+      <div id="aiBreakdownResultsStep" class="hidden">
+        <div id="aiBreakdownList" class="space-y-2 mb-4"></div>
+        <button onclick="app.addSelectedAiTasks()" class="w-full bg-primary-600 text-white font-semibold py-3.5 rounded-xl btn-press" id="aiBreakdownAddBtn" data-i18n="action.addSelectedTasks">Add Tasks</button>
+        <button onclick="app.resetAiBreakdown()" class="w-full text-slate-400 dark:text-slate-500 text-sm font-medium py-2 mt-1" data-i18n="action.startOver">Start over</button>
       </div>
     </div>
   </div>
@@ -396,20 +481,21 @@
   <!-- ================= INVITE MEMBER MODAL ================= -->
   <div id="inviteModal" class="fixed inset-0 z-[60] hidden">
     <div class="modal-overlay absolute inset-0" onclick="app.hideInvite()"></div>
-    <div class="absolute bottom-0 left-0 right-0 bg-white rounded-t-3xl p-6 slide-up">
-      <div class="w-12 h-1.5 bg-slate-200 rounded-full mx-auto mb-6"></div>
-      <h2 class="text-xl font-bold text-slate-800 mb-2" data-i18n="modal.invite">Invite Member</h2>
-      <p class="text-slate-400 text-sm mb-6" data-i18n="modal.inviteSubtitle">Share this link with your teammate</p>
+    <div class="absolute bottom-0 left-0 right-0 bg-white dark:bg-slate-800 rounded-t-3xl p-6 slide-up">
+      <div class="w-12 h-1.5 bg-slate-200 dark:bg-slate-700 rounded-full mx-auto mb-6"></div>
+      <h2 class="text-xl font-bold text-slate-800 dark:text-slate-100 mb-2" data-i18n="modal.invite">Invite Member</h2>
+      <p class="text-slate-400 dark:text-slate-500 text-sm mb-1" data-i18n="modal.inviteSubtitle">Share this link with your teammate</p>
+      <p class="text-xs text-slate-400 dark:text-slate-500 mb-6" id="memberLimitText"></p>
 
-      <div class="bg-slate-50 rounded-xl p-4 mb-4 flex items-center gap-3">
-        <input type="text" id="inviteLink" readonly class="flex-1 bg-transparent text-sm text-slate-600 truncate" value="">
+      <div class="bg-slate-50 dark:bg-slate-900 rounded-xl p-4 mb-4 flex items-center gap-3">
+        <input type="text" id="inviteLink" readonly class="flex-1 bg-transparent text-sm text-slate-600 dark:text-slate-300 truncate" value="">
         <button onclick="app.copyInviteLink()" class="text-primary-600 font-medium text-sm btn-press flex-shrink-0">
           <i class="fas fa-copy"></i>
         </button>
       </div>
 
       <div class="text-center">
-        <p class="text-xs text-slate-400 mb-3">— <span data-i18n="modal.or">or</span> —</p>
+        <p class="text-xs text-slate-400 dark:text-slate-500 mb-3">— <span data-i18n="modal.or">or</span> —</p>
         <button onclick="app.shareViaWhatsApp()" class="w-full bg-success-500 text-white font-semibold py-3.5 rounded-xl btn-press flex items-center justify-center gap-2">
           <i class="fab fa-whatsapp text-lg"></i> <span data-i18n="action.shareWhatsApp">Share on WhatsApp</span>
         </button>
@@ -417,51 +503,67 @@
     </div>
   </div>
 
+  <!-- ================= PROJECT STATS MODAL (Pro) ================= -->
+  <div id="statsModal" class="fixed inset-0 z-[60] hidden">
+    <div class="modal-overlay absolute inset-0" onclick="app.hideStats()"></div>
+    <div class="absolute bottom-0 left-0 right-0 bg-white dark:bg-slate-800 rounded-t-3xl p-6 slide-up max-h-[85vh] overflow-y-auto">
+      <div class="w-12 h-1.5 bg-slate-200 dark:bg-slate-700 rounded-full mx-auto mb-6"></div>
+      <div class="flex items-center gap-3 mb-6">
+        <div class="w-9 h-9 bg-warning-50 dark:bg-warning-500/10 rounded-lg flex items-center justify-center">
+          <i class="fas fa-chart-simple text-warning-500 text-sm"></i>
+        </div>
+        <h2 class="text-xl font-bold text-slate-800 dark:text-slate-100 flex-1">Project Insights</h2>
+        <span class="text-[9px] font-bold uppercase tracking-wider bg-primary-600 text-white px-2 py-1 rounded-full">Pro</span>
+      </div>
+      <div id="statsContent"></div>
+    </div>
+  </div>
+
   <!-- ================= TELEGRAM LINK MODAL ================= -->
   <div id="telegramModal" class="fixed inset-0 z-[60] hidden">
     <div class="modal-overlay absolute inset-0" onclick="app.hideTelegram()"></div>
-    <div class="absolute bottom-0 left-0 right-0 bg-white rounded-t-3xl p-6 slide-up">
-      <div class="w-12 h-1.5 bg-slate-200 rounded-full mx-auto mb-6"></div>
+    <div class="absolute bottom-0 left-0 right-0 bg-white dark:bg-slate-800 rounded-t-3xl p-6 slide-up">
+      <div class="w-12 h-1.5 bg-slate-200 dark:bg-slate-700 rounded-full mx-auto mb-6"></div>
       <div class="text-center mb-6">
         <div class="w-16 h-16 telegram-btn rounded-2xl flex items-center justify-center mx-auto mb-4">
           <i class="fab fa-telegram text-3xl text-white"></i>
         </div>
-        <h2 class="text-xl font-bold text-slate-800 mb-2" data-i18n="modal.linkTelegram">Link Telegram</h2>
-        <p class="text-slate-400 text-sm" data-i18n="modal.telegramSubtitle">Get hourly reminders and deadline alerts</p>
+        <h2 class="text-xl font-bold text-slate-800 dark:text-slate-100 mb-2" data-i18n="modal.linkTelegram">Link Telegram</h2>
+        <p class="text-slate-400 dark:text-slate-500 text-sm" data-i18n="modal.telegramSubtitle">Get hourly reminders and deadline alerts</p>
       </div>
 
       <div class="space-y-4">
-        <div class="bg-slate-50 rounded-xl p-4">
+        <div class="bg-slate-50 dark:bg-slate-900 rounded-xl p-4">
           <div class="flex items-start gap-3">
             <div class="w-6 h-6 bg-primary-600 text-white rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 mt-0.5">1</div>
-            <p class="text-sm text-slate-600">Open <a href="https://t.me/ProjectSyncBot" target="_blank" class="text-primary-600 font-medium">@ProjectSyncBot</a> on Telegram</p>
+            <p class="text-sm text-slate-600 dark:text-slate-300">Open <a href="https://t.me/ProjectSyncBot" target="_blank" class="text-primary-600 font-medium">@ProjectSyncBot</a> on Telegram</p>
           </div>
           <div class="flex items-start gap-3 mt-3">
             <div class="w-6 h-6 bg-primary-600 text-white rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 mt-0.5">2</div>
-            <p class="text-sm text-slate-600" data-i18n="modal.telegramStep2">Press START and copy your Chat ID</p>
+            <p class="text-sm text-slate-600 dark:text-slate-300" data-i18n="modal.telegramStep2">Press START and copy your Chat ID</p>
           </div>
           <div class="flex items-start gap-3 mt-3">
             <div class="w-6 h-6 bg-primary-600 text-white rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 mt-0.5">3</div>
-            <p class="text-sm text-slate-600" data-i18n="modal.telegramStep3">Paste it below and tap Link</p>
+            <p class="text-sm text-slate-600 dark:text-slate-300" data-i18n="modal.telegramStep3">Paste it below and tap Link</p>
           </div>
         </div>
 
         <div>
-          <label class="text-xs font-medium text-slate-500 uppercase tracking-wider" data-i18n="label.telegramChatId">Telegram Chat ID</label>
-          <input type="text" id="telegramChatId" placeholder="e.g. 123456789" class="w-full mt-1.5 bg-slate-50 border border-slate-200 rounded-xl px-4 py-3.5 text-sm focus:border-primary-500 focus:ring-2 focus:ring-primary-100 transition-all">
+          <label class="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider" data-i18n="label.telegramChatId">Telegram Chat ID</label>
+          <input type="text" id="telegramChatId" placeholder="e.g. 123456789" class="w-full mt-1.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3.5 text-sm focus:border-primary-500 focus:ring-2 focus:ring-primary-100 transition-all">
         </div>
 
         <div>
-          <label class="text-xs font-medium text-slate-500 uppercase tracking-wider" data-i18n="label.reminderHours">Reminder Hours</label>
+          <label class="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider" data-i18n="label.reminderHours">Reminder Hours</label>
           <div class="flex items-center gap-3 mt-2">
-            <select id="reminderStart" class="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm">
+            <select id="reminderStart" class="flex-1 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 text-sm">
               <option value="14">2 PM</option>
               <option value="15">3 PM</option>
               <option value="16" selected>4 PM</option>
               <option value="17">5 PM</option>
             </select>
-            <span class="text-slate-400 text-sm">to</span>
-            <select id="reminderEnd" class="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm">
+            <span class="text-slate-400 dark:text-slate-500 text-sm">to</span>
+            <select id="reminderEnd" class="flex-1 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 text-sm">
               <option value="20">8 PM</option>
               <option value="21">9 PM</option>
               <option value="22" selected>10 PM</option>
@@ -480,39 +582,39 @@
   <!-- ================= LANGUAGE PICKER MODAL ================= -->
   <div id="languageModal" class="fixed inset-0 z-[60] hidden">
     <div class="modal-overlay absolute inset-0" onclick="app.hideLanguagePicker()"></div>
-    <div class="absolute bottom-0 left-0 right-0 bg-white rounded-t-3xl p-6 slide-up">
-      <div class="w-12 h-1.5 bg-slate-200 rounded-full mx-auto mb-6"></div>
-      <h2 class="text-xl font-bold text-slate-800 mb-6" data-i18n="modal.selectLanguage">Select Language</h2>
+    <div class="absolute bottom-0 left-0 right-0 bg-white dark:bg-slate-800 rounded-t-3xl p-6 slide-up">
+      <div class="w-12 h-1.5 bg-slate-200 dark:bg-slate-700 rounded-full mx-auto mb-6"></div>
+      <h2 class="text-xl font-bold text-slate-800 dark:text-slate-100 mb-6" data-i18n="modal.selectLanguage">Select Language</h2>
 
       <div class="space-y-2">
-        <button onclick="app.setLanguage('en')" class="w-full flex items-center gap-3 p-4 rounded-xl bg-slate-50 hover:bg-primary-50 transition-all btn-press text-left">
+        <button onclick="app.setLanguage('en')" class="w-full flex items-center gap-3 p-4 rounded-xl bg-slate-50 dark:bg-slate-900 hover:bg-primary-50 dark:hover:bg-primary-900/30 transition-all btn-press text-left">
           <span class="text-2xl">🇺🇸</span>
-          <div><p class="font-medium text-sm text-slate-800">English</p><p class="text-xs text-slate-400">English</p></div>
+          <div><p class="font-medium text-sm text-slate-800 dark:text-slate-100">English</p><p class="text-xs text-slate-400 dark:text-slate-500">English</p></div>
           <i class="fas fa-check text-primary-600 ml-auto hidden" id="check-en"></i>
         </button>
-        <button onclick="app.setLanguage('ms')" class="w-full flex items-center gap-3 p-4 rounded-xl bg-slate-50 hover:bg-primary-50 transition-all btn-press text-left">
+        <button onclick="app.setLanguage('ms')" class="w-full flex items-center gap-3 p-4 rounded-xl bg-slate-50 dark:bg-slate-900 hover:bg-primary-50 dark:hover:bg-primary-900/30 transition-all btn-press text-left">
           <span class="text-2xl">🇲🇾</span>
-          <div><p class="font-medium text-sm text-slate-800">Bahasa Melayu</p><p class="text-xs text-slate-400">Malay</p></div>
+          <div><p class="font-medium text-sm text-slate-800 dark:text-slate-100">Bahasa Melayu</p><p class="text-xs text-slate-400 dark:text-slate-500">Malay</p></div>
           <i class="fas fa-check text-primary-600 ml-auto hidden" id="check-ms"></i>
         </button>
-        <button onclick="app.setLanguage('zh')" class="w-full flex items-center gap-3 p-4 rounded-xl bg-slate-50 hover:bg-primary-50 transition-all btn-press text-left">
+        <button onclick="app.setLanguage('zh')" class="w-full flex items-center gap-3 p-4 rounded-xl bg-slate-50 dark:bg-slate-900 hover:bg-primary-50 dark:hover:bg-primary-900/30 transition-all btn-press text-left">
           <span class="text-2xl">🇨🇳</span>
-          <div><p class="font-medium text-sm text-slate-800">中文</p><p class="text-xs text-slate-400">Chinese</p></div>
+          <div><p class="font-medium text-sm text-slate-800 dark:text-slate-100">中文</p><p class="text-xs text-slate-400 dark:text-slate-500">Chinese</p></div>
           <i class="fas fa-check text-primary-600 ml-auto hidden" id="check-zh"></i>
         </button>
-        <button onclick="app.setLanguage('es')" class="w-full flex items-center gap-3 p-4 rounded-xl bg-slate-50 hover:bg-primary-50 transition-all btn-press text-left">
+        <button onclick="app.setLanguage('es')" class="w-full flex items-center gap-3 p-4 rounded-xl bg-slate-50 dark:bg-slate-900 hover:bg-primary-50 dark:hover:bg-primary-900/30 transition-all btn-press text-left">
           <span class="text-2xl">🇪🇸</span>
-          <div><p class="font-medium text-sm text-slate-800">Español</p><p class="text-xs text-slate-400">Spanish</p></div>
+          <div><p class="font-medium text-sm text-slate-800 dark:text-slate-100">Español</p><p class="text-xs text-slate-400 dark:text-slate-500">Spanish</p></div>
           <i class="fas fa-check text-primary-600 ml-auto hidden" id="check-es"></i>
         </button>
-        <button onclick="app.setLanguage('ja')" class="w-full flex items-center gap-3 p-4 rounded-xl bg-slate-50 hover:bg-primary-50 transition-all btn-press text-left">
+        <button onclick="app.setLanguage('ja')" class="w-full flex items-center gap-3 p-4 rounded-xl bg-slate-50 dark:bg-slate-900 hover:bg-primary-50 dark:hover:bg-primary-900/30 transition-all btn-press text-left">
           <span class="text-2xl">🇯🇵</span>
-          <div><p class="font-medium text-sm text-slate-800">日本語</p><p class="text-xs text-slate-400">Japanese</p></div>
+          <div><p class="font-medium text-sm text-slate-800 dark:text-slate-100">日本語</p><p class="text-xs text-slate-400 dark:text-slate-500">Japanese</p></div>
           <i class="fas fa-check text-primary-600 ml-auto hidden" id="check-ja"></i>
         </button>
-        <button onclick="app.setLanguage('ko')" class="w-full flex items-center gap-3 p-4 rounded-xl bg-slate-50 hover:bg-primary-50 transition-all btn-press text-left">
+        <button onclick="app.setLanguage('ko')" class="w-full flex items-center gap-3 p-4 rounded-xl bg-slate-50 dark:bg-slate-900 hover:bg-primary-50 dark:hover:bg-primary-900/30 transition-all btn-press text-left">
           <span class="text-2xl">🇰🇷</span>
-          <div><p class="font-medium text-sm text-slate-800">한국어</p><p class="text-xs text-slate-400">Korean</p></div>
+          <div><p class="font-medium text-sm text-slate-800 dark:text-slate-100">한국어</p><p class="text-xs text-slate-400 dark:text-slate-500">Korean</p></div>
           <i class="fas fa-check text-primary-600 ml-auto hidden" id="check-ko"></i>
         </button>
       </div>
@@ -522,11 +624,11 @@
   <!-- ================= NOTIFICATIONS MODAL ================= -->
   <div id="notificationsModal" class="fixed inset-0 z-[60] hidden">
     <div class="modal-overlay absolute inset-0" onclick="app.hideNotifications()"></div>
-    <div class="absolute right-0 top-0 bottom-0 w-full max-w-sm bg-white slide-up">
-      <div class="p-4 border-b border-slate-100 flex items-center justify-between">
-        <h2 class="font-bold text-slate-800" data-i18n="modal.notifications">Notifications</h2>
-        <button onclick="app.hideNotifications()" class="w-8 h-8 rounded-lg bg-slate-50 flex items-center justify-center btn-press">
-          <i class="fas fa-times text-slate-400 text-sm"></i>
+    <div class="absolute right-0 top-0 bottom-0 w-full max-w-sm bg-white dark:bg-slate-800 slide-up">
+      <div class="p-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
+        <h2 class="font-bold text-slate-800 dark:text-slate-100" data-i18n="modal.notifications">Notifications</h2>
+        <button onclick="app.hideNotifications()" class="w-8 h-8 rounded-lg bg-slate-50 dark:bg-slate-900 flex items-center justify-center btn-press">
+          <i class="fas fa-times text-slate-400 dark:text-slate-500 text-sm"></i>
         </button>
       </div>
       <div id="notificationsList" class="p-4 space-y-3 overflow-y-auto" style="max-height: calc(100vh - 60px);"></div>
@@ -536,74 +638,110 @@
   <!-- ================= PROFILE / SETTINGS MODAL ================= -->
   <div id="profileModal" class="fixed inset-0 z-[60] hidden">
     <div class="modal-overlay absolute inset-0" onclick="app.hideProfile()"></div>
-    <div class="absolute bottom-0 left-0 right-0 bg-white rounded-t-3xl p-6 slide-up max-h-[90vh] overflow-y-auto">
-      <div class="w-12 h-1.5 bg-slate-200 rounded-full mx-auto mb-6"></div>
+    <div class="absolute bottom-0 left-0 right-0 bg-white dark:bg-slate-800 rounded-t-3xl p-6 slide-up max-h-[90vh] overflow-y-auto">
+      <div class="w-12 h-1.5 bg-slate-200 dark:bg-slate-700 rounded-full mx-auto mb-6"></div>
 
       <div class="text-center mb-6">
-        <div class="w-20 h-20 rounded-full overflow-hidden mx-auto mb-3 ring-4 ring-primary-100">
+        <div class="w-20 h-20 rounded-full overflow-hidden mx-auto mb-3 ring-4 ring-primary-100 dark:ring-primary-900/40">
           <img id="profileAvatar" src="" class="w-full h-full object-cover" alt="">
         </div>
-        <h2 class="font-bold text-slate-800 text-lg" id="profileName">User</h2>
-        <p class="text-slate-400 text-sm" id="profileEmail">email@example.com</p>
+        <h2 class="font-bold text-slate-800 dark:text-slate-100 text-lg" id="profileName">User</h2>
+        <p class="text-slate-400 dark:text-slate-500 text-sm" id="profileEmail">email@example.com</p>
         <div id="eduLevelBadge" class="mt-2 inline-block"></div>
       </div>
 
       <div class="space-y-2 mb-6">
-        <div class="flex items-center justify-between p-4 bg-slate-50 rounded-xl">
+        <div class="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-900 rounded-xl">
           <div class="flex items-center gap-3">
-            <div class="w-9 h-9 bg-primary-100 rounded-lg flex items-center justify-center">
+            <div class="w-9 h-9 bg-primary-100 dark:bg-primary-900/30 rounded-lg flex items-center justify-center">
               <i class="fas fa-globe text-primary-600 text-sm"></i>
             </div>
             <div>
-              <p class="font-medium text-sm text-slate-800" data-i18n="label.language">Language</p>
-              <p class="text-xs text-slate-400" id="currentLanguage">English</p>
+              <p class="font-medium text-sm text-slate-800 dark:text-slate-100" data-i18n="label.language">Language</p>
+              <p class="text-xs text-slate-400 dark:text-slate-500" id="currentLanguage">English</p>
             </div>
           </div>
           <button onclick="app.showLanguagePicker()" class="text-primary-600 text-xs font-medium btn-press" data-i18n="action.change">Change</button>
         </div>
 
-        <div class="flex items-center justify-between p-4 bg-slate-50 rounded-xl">
+        <div class="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-900 rounded-xl">
           <div class="flex items-center gap-3">
-            <div class="w-9 h-9 bg-primary-100 rounded-lg flex items-center justify-center">
+            <div class="w-9 h-9 bg-primary-100 dark:bg-primary-900/30 rounded-lg flex items-center justify-center">
+              <i class="fas fa-moon text-primary-600 text-sm"></i>
+            </div>
+            <div>
+              <p class="font-medium text-sm text-slate-800 dark:text-slate-100" data-i18n="label.theme">Theme</p>
+              <p class="text-xs text-slate-400 dark:text-slate-500">Light, dark, or match your system</p>
+            </div>
+          </div>
+          <div class="flex gap-1 bg-white dark:bg-slate-800 p-1 rounded-lg card-shadow">
+            <button onclick="app.setTheme('light')" id="themeBtnLight" class="theme-btn px-2.5 py-1.5 rounded-md text-xs font-medium transition-all"><i class="fas fa-sun"></i></button>
+            <button onclick="app.setTheme('dark')" id="themeBtnDark" class="theme-btn px-2.5 py-1.5 rounded-md text-xs font-medium transition-all"><i class="fas fa-moon"></i></button>
+            <button onclick="app.setTheme('system')" id="themeBtnSystem" class="theme-btn px-2.5 py-1.5 rounded-md text-xs font-medium transition-all"><i class="fas fa-desktop"></i></button>
+          </div>
+        </div>
+
+        <div class="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-900 rounded-xl">
+          <div class="flex items-center gap-3">
+            <div class="w-9 h-9 bg-primary-100 dark:bg-primary-900/30 rounded-lg flex items-center justify-center">
               <i class="fas fa-clock text-primary-600 text-sm"></i>
             </div>
             <div>
-              <p class="font-medium text-sm text-slate-800" data-i18n="label.timezone">Timezone</p>
-              <p class="text-xs text-slate-400" id="currentTimezone">Auto-detected</p>
+              <p class="font-medium text-sm text-slate-800 dark:text-slate-100" data-i18n="label.timezone">Timezone</p>
+              <p class="text-xs text-slate-400 dark:text-slate-500" id="currentTimezone">Auto-detected</p>
             </div>
           </div>
         </div>
 
-        <div class="flex items-center justify-between p-4 bg-slate-50 rounded-xl" id="telegramStatusRow">
+        <div class="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-900 rounded-xl" id="telegramStatusRow">
           <div class="flex items-center gap-3">
             <div class="w-9 h-9 bg-[#0088cc]/10 rounded-lg flex items-center justify-center">
               <i class="fab fa-telegram text-[#0088cc] text-sm"></i>
             </div>
             <div>
-              <p class="font-medium text-sm text-slate-800">Telegram</p>
-              <p class="text-xs text-slate-400" id="telegramStatusText">Not linked</p>
+              <p class="font-medium text-sm text-slate-800 dark:text-slate-100">Telegram</p>
+              <p class="text-xs text-slate-400 dark:text-slate-500" id="telegramStatusText">Not linked</p>
             </div>
           </div>
           <button onclick="app.showTelegramLink()" class="text-primary-600 text-xs font-medium btn-press" id="telegramLinkBtn">Link</button>
         </div>
 
-        <div class="flex items-center justify-between p-4 bg-slate-50 rounded-xl" id="proStatusRow">
+        <div class="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-900 rounded-xl" id="proStatusRow">
           <div class="flex items-center gap-3">
-            <div class="w-9 h-9 bg-warning-50 rounded-lg flex items-center justify-center">
+            <div class="w-9 h-9 bg-warning-50 dark:bg-warning-500/10 rounded-lg flex items-center justify-center">
               <i class="fas fa-star text-warning-500 text-sm"></i>
             </div>
             <div>
-              <p class="font-medium text-sm text-slate-800">ProjectSync Pro</p>
-              <p class="text-xs text-slate-400" id="proStatusText">$3/month, cancel anytime</p>
+              <p class="font-medium text-sm text-slate-800 dark:text-slate-100">ProjectSync Pro</p>
+              <p class="text-xs text-slate-400 dark:text-slate-500" id="proStatusText">$5/month, cancel anytime</p>
             </div>
           </div>
           <button onclick="stripePayments.checkoutPro()" class="text-primary-600 text-xs font-medium btn-press" id="proUpgradeBtn">Upgrade</button>
         </div>
       </div>
 
-      <button onclick="app.signOut()" class="w-full bg-accent-50 text-accent-600 font-semibold py-3.5 rounded-xl btn-press border border-accent-100">
+      <button onclick="app.signOut()" class="w-full bg-accent-50 dark:bg-accent-500/10 text-accent-600 font-semibold py-3.5 rounded-xl btn-press border border-accent-100 dark:border-accent-500/20">
         <i class="fas fa-sign-out-alt mr-2"></i> <span data-i18n="action.signOut">Sign Out</span>
       </button>
+    </div>
+  </div>
+
+  <!-- ================= STICKER PICKER MODAL ================= -->
+  <div id="stickerPickerModal" class="fixed inset-0 z-[65] hidden">
+    <div class="modal-overlay absolute inset-0" onclick="app.hideStickerPicker()"></div>
+    <div class="absolute bottom-0 left-0 right-0 bg-white dark:bg-slate-800 rounded-t-3xl p-6 slide-up max-h-[75vh] overflow-y-auto">
+      <div class="w-12 h-1.5 bg-slate-200 dark:bg-slate-700 rounded-full mx-auto mb-6"></div>
+
+      <div class="flex gap-1.5 mb-4 bg-slate-100 dark:bg-slate-900 p-1 rounded-xl">
+        <button onclick="app.setStickerTab('builtin')" id="stickerTabBuiltin" class="flex-1 py-2 text-xs font-medium rounded-lg bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-100 card-shadow transition-all">Stickers</button>
+        <button onclick="app.setStickerTab('yours')" id="stickerTabYours" class="flex-1 py-2 text-xs font-medium rounded-lg text-slate-400 dark:text-slate-500 transition-all">Yours</button>
+      </div>
+
+      <div id="stickerPanelBuiltin" class="grid grid-cols-5 gap-2"></div>
+      <div id="stickerPanelYours" class="hidden">
+        <input type="file" id="stickerUpload" accept="image/*" class="hidden" onchange="app.handleStickerUpload(this)">
+        <div id="stickerPanelYoursGrid" class="grid grid-cols-5 gap-2"></div>
+      </div>
     </div>
   </div>
 
@@ -616,7 +754,7 @@
   </div>
 
   <!-- ================= LOADING OVERLAY ================= -->
-  <div id="loadingOverlay" class="fixed inset-0 z-[80] bg-white/80 backdrop-blur-sm hidden flex items-center justify-center">
+  <div id="loadingOverlay" class="fixed inset-0 z-[80] bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm hidden flex items-center justify-center">
     <div class="flex flex-col items-center gap-3">
       <div class="w-10 h-10 border-3 border-primary-200 border-t-primary-600 rounded-full animate-spin"></div>
       <p class="text-sm text-slate-500 font-medium">Loading...</p>

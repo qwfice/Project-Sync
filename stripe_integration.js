@@ -7,7 +7,7 @@
 // 1. Create Stripe account: https://stripe.com
 // 2. Go to Stripe Dashboard > Products > Create Product
 //    Name: "ProjectSync Pro"
-//    Price: $3.00 / month (or $24.00 / year)
+//    Price: $5.00 / month (or $40.00 / year)
 // 3. Copy the Price ID (looks like: price_1ABC...)
 // 4. Paste it below in STRIPE_PRICE_ID
 // 5. Also get your Publishable Key from Dashboard > Developers > API Keys
@@ -15,9 +15,9 @@
 // For testing, use test mode keys. Switch to live keys when ready.
 // ============================================================
 
-const STRIPE_PUBLISHABLE_KEY = 'pk_test_YOUR_PUBLISHABLE_KEY_HERE';
-const STRIPE_PRICE_ID = 'price_YOUR_PRICE_ID_HERE';  // Monthly Pro plan
-const STRIPE_PRICE_ID_YEARLY = 'price_YOUR_YEARLY_PRICE_ID_HERE';  // Optional: yearly plan
+const STRIPE_PUBLISHABLE_KEY = 'pk_test_51U3I61J8vEMk9XYZOXiAZyMTJ1RfLEDPXbco2EYzCa9OLUePPpod1FOVPWa5U1tmxZrdyAbZkt2xWPUhBqapYAbX00HHPeXNML';
+const STRIPE_PRICE_ID = 'price_1U3y7wC5PuXMUQZVuVvCN9Xb';  // Monthly Pro plan
+const STRIPE_PRICE_ID_YEARLY = 'price_1U3yB5C5PuXMUQZVViaHrg7r';  // Yearly Pro plan
 
 // Load Stripe.js dynamically
 function loadStripeScript() {
@@ -153,23 +153,23 @@ const stripePayments = {
         <div class="space-y-3 mb-6">
           <div class="flex items-center gap-3 text-sm">
             <i class="fas fa-check-circle text-success-500"></i>
-            <span class="text-slate-700">Unlimited projects</span>
+            <span class="text-slate-700">Unlimited projects <span class="text-slate-400">(Free: 5)</span></span>
           </div>
           <div class="flex items-center gap-3 text-sm">
             <i class="fas fa-check-circle text-success-500"></i>
-            <span class="text-slate-700">Advanced analytics</span>
+            <span class="text-slate-700">Unlimited members per project <span class="text-slate-400">(Free: 8)</span></span>
           </div>
           <div class="flex items-center gap-3 text-sm">
             <i class="fas fa-check-circle text-success-500"></i>
-            <span class="text-slate-700">Priority support</span>
+            <span class="text-slate-700">5GB storage per project <span class="text-slate-400">(Free: 1GB)</span></span>
           </div>
           <div class="flex items-center gap-3 text-sm">
             <i class="fas fa-check-circle text-success-500"></i>
-            <span class="text-slate-700">Export to PDF/Excel</span>
+            <span class="text-slate-700">Project Insights — completion rate, overdue tracking, member activity</span>
           </div>
           <div class="flex items-center gap-3 text-sm">
             <i class="fas fa-check-circle text-success-500"></i>
-            <span class="text-slate-700">Custom themes</span>
+            <span class="text-slate-700">Support the project 💙</span>
           </div>
         </div>
 
@@ -177,7 +177,7 @@ const stripePayments = {
           <div class="bg-slate-50 rounded-xl p-4 border-2 border-primary-500">
             <div class="flex items-center justify-between mb-2">
               <span class="font-bold text-slate-800">Monthly</span>
-              <span class="text-2xl font-bold text-primary-600">$3<span class="text-sm text-slate-400 font-normal">/mo</span></span>
+              <span class="text-2xl font-bold text-primary-600">$5<span class="text-sm text-slate-400 font-normal">/mo</span></span>
             </div>
             <p class="text-xs text-slate-400">Billed monthly. Cancel anytime.</p>
             <button onclick="stripePayments.checkoutPro(false)" class="w-full mt-3 bg-primary-600 text-white font-semibold py-3 rounded-xl btn-press">
@@ -190,7 +190,7 @@ const stripePayments = {
               <span class="font-bold text-slate-800">Yearly</span>
               <div>
                 <span class="text-xs bg-success-100 text-success-600 px-2 py-0.5 rounded font-medium">Save 33%</span>
-                <span class="text-2xl font-bold text-primary-600 ml-2">$24<span class="text-sm text-slate-400 font-normal">/yr</span></span>
+                <span class="text-2xl font-bold text-primary-600 ml-2">$40<span class="text-sm text-slate-400 font-normal">/yr</span></span>
               </div>
             </div>
             <p class="text-xs text-slate-400">Billed annually. Best value for students.</p>

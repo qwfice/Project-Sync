@@ -7,8 +7,9 @@ Respects each user's timezone and preferred reminder hours.
 
 SETUP:
 1. Message @BotFather on Telegram, create a bot, get your token
-2. Replace BOT_TOKEN below
-3. Replace SUPABASE_URL and SUPABASE_KEY with your credentials
+2. Copy .env.example to .env and fill in BOT_TOKEN, SUPABASE_URL, SUPABASE_KEY
+   (SUPABASE_KEY is the service_role key, NOT the anon key)
+3. pip3 install -r requirements.txt
 4. Run manually: python3 telegram_bot.py
 5. Or set up cron: crontab -e, add: 0 * * * * /usr/bin/python3 /path/to/telegram_bot.py
 
@@ -21,17 +22,21 @@ For free cloud hosting, use:
 import os
 import sys
 import json
+import socket
 import asyncio
 import aiohttp
 from datetime import datetime, timedelta
+from dotenv import load_dotenv
 from supabase import create_client, Client
 
 # ============================================================
-# CONFIGURATION — REPLACE THESE VALUES
+# CONFIGURATION — loaded from .env (see .env.example)
 # ============================================================
-BOT_TOKEN = "YOUR_BOTFATHER_TOKEN_HERE"  # From @BotFather
-SUPABASE_URL = "https://YOUR_PROJECT_ID.supabase.co"
-SUPABASE_KEY = "YOUR_SERVICE_ROLE_KEY_HERE"  # NOT the anon key! Use service_role key.
+load_dotenv()
+
+BOT_TOKEN = os.environ["BOT_TOKEN"]
+SUPABASE_URL = os.environ["SUPABASE_URL"]
+SUPABASE_KEY = os.environ["SUPABASE_KEY"]  # service_role key, not anon
 
 # ============================================================
 # INITIALIZE
@@ -39,6 +44,15 @@ SUPABASE_KEY = "YOUR_SERVICE_ROLE_KEY_HERE"  # NOT the anon key! Use service_rol
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
 TELEGRAM_API = f"https://api.telegram.org/bot{BOT_TOKEN}"
+
+
+def _new_session() -> aiohttp.ClientSession:
+    """aiohttp.ClientSession forced to IPv4. Some hosting environments
+    advertise a AAAA record for api.telegram.org that doesn't actually
+    route, and aiohttp's default connector hangs trying it before falling
+    back — forcing IPv4 avoids that entirely."""
+    connector = aiohttp.TCPConnector(family=socket.AF_INET)
+    return aiohttp.ClientSession(connector=connector)
 
 
 async def send_telegram_message(chat_id: str, text: str, inline_keyboard=None):
@@ -53,7 +67,7 @@ async def send_telegram_message(chat_id: str, text: str, inline_keyboard=None):
     if inline_keyboard:
         payload["reply_markup"] = json.dumps({"inline_keyboard": inline_keyboard})
 
-    async with aiohttp.ClientSession() as session:
+    async with _new_session() as session:
         async with session.post(url, json=payload) as resp:
             result = await resp.json()
             if not result.get("ok"):
@@ -106,10 +120,9 @@ async def send_hourly_reminders():
     """Send hourly check-in reminders to users during their preferred hours."""
     print(f"[{datetime.now()}] Sending hourly reminders...")
 
-    # Get all users with Telegram linked
-    users = supabase.table("profiles").select(
-        "*, tasks:tasks(*)"  # This won't work directly, we'll fetch tasks separately
-    ).eq("telegram_linked", True).execute()
+    # Get all users with Telegram linked (tasks are fetched separately below,
+    # per user, once we know which projects they're in)
+    users = supabase.table("profiles").select("*").eq("telegram_linked", True).execute()
 
     if not users.data:
         print("No linked Telegram users found.")
@@ -327,6 +340,47 @@ async def send_daily_digest():
 
 
 # ============================================================
+# /start -> CHAT ID DISCOVERY
+# ============================================================
+async def handle_start_commands():
+    """Reply to any pending /start messages with the sender's chat ID, so
+    the app's "Press START and copy your Chat ID" instructions actually
+    have something behind them. Stateless between runs: acknowledges
+    processed updates via the offset param instead of persisting a cursor,
+    since this script only ever runs as a one-shot (cron) process."""
+    print(f"[{datetime.now()}] Checking for /start commands...")
+
+    async with _new_session() as session:
+        async with session.get(f"{TELEGRAM_API}/getUpdates", params={"timeout": 0}) as resp:
+            data = await resp.json()
+
+    updates = data.get("result", [])
+    if not updates:
+        return
+
+    max_update_id = None
+    for update in updates:
+        max_update_id = update["update_id"]
+        message = update.get("message", {})
+        text = (message.get("text") or "").strip()
+        chat_id = message.get("chat", {}).get("id")
+
+        if text == "/start" and chat_id:
+            reply = (
+                "👋 *Welcome to ProjectSync!*\n\n"
+                f"Your Chat ID is:\n`{chat_id}`\n\n"
+                "Paste this into ProjectSync → Settings → Link Telegram to start getting reminders."
+            )
+            await send_telegram_message(str(chat_id), reply)
+            print(f"  ✓ Replied with chat ID to {chat_id}")
+
+    if max_update_id is not None:
+        # Acknowledge processed updates so getUpdates doesn't return them again.
+        async with _new_session() as session:
+            await session.get(f"{TELEGRAM_API}/getUpdates", params={"offset": max_update_id + 1, "timeout": 0})
+
+
+# ============================================================
 # MAIN
 # ============================================================
 async def main():
@@ -337,6 +391,7 @@ async def main():
     print("=" * 60)
 
     try:
+        await handle_start_commands()
         await send_hourly_reminders()
         await send_deadline_warnings()
         await send_daily_digest()

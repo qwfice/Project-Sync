@@ -1,0 +1,16 @@
+{
+  "name": "projectsync-discord-bot",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Standalone always-on Discord bot for ProjectSync: two-way chat sync and account linking. See README.md before running.",
+  "scripts": {
+    "start": "node index.js",
+    "register-commands": "node register-commands.js"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.39.0",
+    "discord.js": "^14.14.1",
+    "dotenv": "^16.4.5"
+  }
+}
